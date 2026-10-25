@@ -1,0 +1,16 @@
+{
+  "appId": "com.lyfestudios.neonkick",
+  "appName": "NeonKick",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#070a14",
+    "preferredContentMode": "mobile",
+    "allowsLinkPreview": false,
+    "scrollEnabled": false,
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "android": {
+    "backgroundColor": "#070a14"
+  }
+}

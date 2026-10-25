@@ -1,0 +1,13 @@
+{
+  "name": "neonkick-server",
+  "version": "1.0.0",
+  "description": "NeonKick — kuş bakışı 3D online arena futbolu sunucusu (bağımlılık yok)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {}
+}

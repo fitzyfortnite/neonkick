@@ -1,0 +1,77 @@
+name: iOS -> TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: "Oyun sunucusu adresi (https://neonkick-xxxx.onrender.com). Boşsa SERVER_URL değişkeni kullanılır."
+        required: false
+      build_number:
+        description: "CFBundleVersion (boş = 100 + çalıştırma no)"
+        required: false
+      app_version:
+        description: "Sürüm (CFBundleShortVersionString)"
+        required: false
+        default: "1.0.0"
+      runner:
+        description: "macOS makinesi (kuyrukta beklerse başkasını dene)"
+        type: choice
+        options: [macos-26, macos-15, macos-15-intel]
+        default: macos-26
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: ${{ inputs.runner || 'macos-26' }}
+    timeout-minutes: 90
+    env:
+      TEAM_ID: ${{ vars.TEAM_ID || 'S3SMBYR9FZ' }}
+      BUNDLE_ID: ${{ vars.BUNDLE_ID || 'com.lyfestudios.neonkick' }}
+      APP_NAME: NeonKick
+      APP_VERSION: ${{ inputs.app_version || '1.0.0' }}
+      BUILD_NUMBER: ${{ inputs.build_number }}
+      SERVER_URL: ${{ inputs.server_url || vars.SERVER_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check secrets
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          missing=0
+          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
+            if [ -z "${!v}" ]; then echo "::error::Repository secret $v tanımlı değil (Settings > Secrets and variables > Actions > New repository secret)"; missing=1; fi
+          done
+          exit $missing
+
+      - name: Build, sign, upload
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: bash ci/ios-build.sh
+
+      - name: Clean up
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/neonkick" ~/private_keys
+
+      - name: Keep logs (failures only)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-logs
+          path: logs/
+          if-no-files-found: ignore
+          retention-days: 3

@@ -1,0 +1,1682 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+<title>NeonKick</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="nk-server" content="">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap">
+<style>
+/* Layout: tek ekranlık oyun; 3D sahne arkada tam ekran, UI katmanları üstte. Tek tema (neon gece) bilinçli tercih. */
+:root{
+  --bg:#070a14; --bg2:#0d1226; --panel:rgba(10,14,32,.84); --panel-2:rgba(18,24,50,.92);
+  --fg:#eef1ff; --muted:#8e97c2; --line:rgba(140,160,255,.18);
+  --accent:#ffcf4a; --accent-2:#ff9a1f; --cyan:#4ee8ff; --magenta:#ff3fb4; --green:#43e68b; --red:#ff5a6a;
+  --glow:0 0 18px rgba(255,207,74,.45), 0 0 48px rgba(255,160,40,.18);
+  --font-display:'Orbitron','Rajdhani',system-ui,sans-serif; --font-body:'Rajdhani','Segoe UI',system-ui,sans-serif;
+  --cut:12px;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:16px;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+.screen{position:fixed;inset:0;z-index:3;display:flex;flex-direction:column;padding-block:10px max(10px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));box-sizing:border-box}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;letter-spacing:.03em;text-transform:uppercase}
+button{font-family:inherit;color:inherit;cursor:pointer}
+input,select{font-family:inherit}
+.btn{position:relative;overflow:hidden;border:none;background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.03));padding:10px 18px;font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.06em;text-transform:uppercase;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);transition:transform .12s,filter .2s;box-shadow:inset 0 0 0 1px var(--line)}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.15)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible,.icon-btn:focus-visible,input:focus-visible,.tab:focus-visible,.mode:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.btn.primary{background:linear-gradient(135deg,#ffe08a,#ff9a1f 55%,#ff5e3a);color:#2a1600;box-shadow:none;filter:drop-shadow(0 0 14px rgba(255,170,40,.55))}
+.btn.cyan{background:linear-gradient(135deg,#8ff6ff,#1fa9ff);color:#001a2e;box-shadow:none;filter:drop-shadow(0 0 12px rgba(78,232,255,.45))}
+.btn.magenta{background:linear-gradient(135deg,#ff7bd0,#b31cff);color:#fff;box-shadow:none;filter:drop-shadow(0 0 12px rgba(255,63,180,.45))}
+.btn.danger{background:linear-gradient(135deg,#ff7a7a,#c0203a);color:#fff;box-shadow:none}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;filter:none}
+.shine::after{content:"";position:absolute;top:-60%;left:-80%;width:50%;height:220%;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.5) 50%,transparent 80%);transform:skewX(-20deg);animation:shine 2.8s ease-in-out infinite;pointer-events:none}
+@keyframes shine{0%{left:-80%}35%{left:140%}100%{left:140%}}
+.glow-text{text-shadow:0 0 12px rgba(255,207,74,.75),0 0 32px rgba(255,160,40,.35)}
+/* Oyun paneli: kesik köşe, gradyan kenar, diyagonal doku */
+.panel{position:relative;background:linear-gradient(135deg,rgba(78,232,255,.08),transparent 35%,transparent 65%,rgba(255,63,180,.08)),repeating-linear-gradient(135deg,rgba(255,255,255,.025) 0 2px,transparent 2px 9px),var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);clip-path:polygon(var(--cut) 0,100% 0,100% calc(100% - var(--cut)),calc(100% - var(--cut)) 100%,0 100%,0 var(--cut));box-shadow:inset 0 0 0 1px var(--line)}
+.panel::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,var(--cyan),var(--accent),var(--magenta));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;padding:1px;opacity:.55}
+.panel::after{content:"";position:absolute;left:0;top:0;width:60px;height:3px;background:var(--accent);box-shadow:0 0 10px var(--accent);pointer-events:none}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.spacer{flex:1}
+.muted{color:var(--muted)}
+.tiny{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);background:rgba(0,0,0,.4);font-weight:700;font-size:13px;white-space:nowrap;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+.pill.gold{border-color:rgba(255,207,74,.5);color:var(--accent)}
+.coin{display:inline-block;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b0,#ffcf4a 45%,#b36b00);box-shadow:0 0 8px rgba(255,207,74,.8);flex:none}
+.ico{width:16px;height:16px;display:inline-block;vertical-align:-3px;margin-right:6px;flex:none}
+.ico svg{width:100%;height:100%;display:block}
+
+/* --- Açılış --- */
+#s-nick{align-items:center;justify-content:center;gap:10px;background:radial-gradient(900px 500px at 50% 115%,rgba(255,154,31,.22),transparent 60%),radial-gradient(700px 400px at 10% 0%,rgba(78,232,255,.12),transparent 60%),linear-gradient(180deg,rgba(7,10,20,.25),rgba(7,10,20,.85))}
+#s-nick::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 48px,rgba(78,232,255,.06) 48px 49px),repeating-linear-gradient(90deg,transparent 0 48px,rgba(255,63,180,.05) 48px 49px);mask:radial-gradient(60% 60% at 50% 50%,#000,transparent);-webkit-mask:radial-gradient(60% 60% at 50% 50%,#000,transparent);pointer-events:none}
+.logo{position:relative;font-family:var(--font-display);font-weight:900;font-size:clamp(46px,10vw,96px);line-height:.9;letter-spacing:.02em;background:linear-gradient(180deg,#fff6cc,#ffcf4a 45%,#ff6a1f);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 26px rgba(255,170,40,.5));text-align:center}
+.logo em{font-style:normal;background:linear-gradient(180deg,#c6fbff,#4ee8ff 50%,#1b8fff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.logo small{display:block;font-size:.22em;letter-spacing:.5em;color:var(--fg);-webkit-text-fill-color:var(--fg);filter:none;margin-top:10px;opacity:.85}
+.title-menu{display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:26px;position:relative}
+.nick-card{width:min(440px,100%);padding:26px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box}
+.field{display:flex;flex-direction:column;gap:6px}
+.field input,.inp{background:rgba(0,0,0,.45);border:1px solid var(--line);padding:12px 14px;color:var(--fg);font-size:18px;font-weight:700;letter-spacing:.05em;min-width:0;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+.err{color:var(--red);font-weight:600;min-height:1.2em}
+
+/* --- Lobi --- */
+#s-lobby{justify-content:space-between;pointer-events:none}
+#s-lobby > *{pointer-events:auto}
+.topbar{display:flex;gap:10px;align-items:center;flex-wrap:nowrap;padding:6px 14px;overflow-x:auto;scrollbar-width:none;min-width:0}
+.topbar::-webkit-scrollbar{display:none}
+.nav{display:flex;gap:6px;align-items:center;flex-wrap:nowrap;flex:none}
+.avatar{width:38px;height:38px;background:linear-gradient(135deg,var(--cyan),var(--magenta));display:grid;place-items:center;font-family:var(--font-display);font-weight:900;color:#0a0a14;font-size:18px;flex:none;clip-path:polygon(25% 0,100% 0,100% 75%,75% 100%,0 100%,0 25%)}
+.xpbar{height:8px;background:rgba(0,0,0,.5);overflow:hidden;min-width:110px;border:1px solid var(--line);clip-path:polygon(3px 0,100% 0,100% calc(100% - 3px),calc(100% - 3px) 100%,0 100%,0 3px)}
+.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),#9ff6ff);box-shadow:0 0 10px var(--cyan);transition:width .5s}
+.rank{display:flex;align-items:center;gap:8px;padding:3px 10px 3px 3px;border:1px solid var(--line);background:rgba(0,0,0,.4);cursor:pointer;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.rank:hover{border-color:rgba(255,207,74,.6)}
+.rank-ico{width:34px;height:34px;display:grid;place-items:center;flex:none}
+.rank-ico svg{width:100%;height:100%;filter:drop-shadow(0 0 5px var(--rc,#fff))}
+.icon-btn{border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(0,0,0,.35));padding:7px 11px;font-family:var(--font-display);font-weight:700;font-size:11px;letter-spacing:.06em;text-transform:uppercase;position:relative;overflow:hidden;white-space:nowrap;flex:none;display:inline-flex;align-items:center;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px)}
+.icon-btn:hover{border-color:rgba(255,207,74,.7);filter:brightness(1.2)}
+.icon-btn .dot{position:absolute;top:5px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 8px var(--red)}
+.lobby-bottom{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.play-card{padding:12px 14px;display:flex;flex-direction:column;gap:8px;width:min(340px,100%);box-sizing:border-box}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mode{border:1px solid var(--line);padding:8px 10px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(0,0,0,.35));display:flex;flex-direction:column;gap:3px;align-items:flex-start;text-align:left;transition:all .15s;position:relative;overflow:hidden;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.mode b{font-family:var(--font-display);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+.mode span{font-size:11px;color:var(--muted);line-height:1.1}
+.mode:hover{border-color:var(--accent);box-shadow:var(--glow);transform:translateY(-2px)}
+.mode.ranked{border-color:rgba(255,63,180,.5)}
+.mode.ranked::after{content:"RANK";position:absolute;right:-18px;top:6px;transform:rotate(35deg);background:var(--magenta);color:#fff;font-size:9px;font-weight:900;letter-spacing:.1em;padding:1px 22px}
+.mode-carousel,.mode-play{display:none}
+.mode-carousel{align-items:center;gap:8px}
+.mode-cur{flex:1;min-width:0;border:1px solid var(--line);padding:8px 12px;background:rgba(0,0,0,.4);display:flex;flex-direction:column;gap:2px;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.mode-cur b{font-family:var(--font-display);font-size:14px;text-transform:uppercase}
+.mode-cur span{font-size:12px;color:var(--muted)}
+.side-card{padding:8px 14px;display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px 16px;box-sizing:border-box}
+.loadout{display:flex;gap:10px;align-items:center}
+.loadout b{font-size:14px;font-family:var(--font-display);text-transform:uppercase;letter-spacing:.03em}
+.boot-chip{width:34px;height:24px;border-radius:8px 12px 12px 8px;box-shadow:0 0 14px var(--c,#999);flex:none}
+.status{font-size:13px;display:flex;align-items:center;gap:6px}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--muted);box-shadow:0 0 8px currentColor}
+.status.on i{background:var(--green);color:var(--green)}
+.ad-banner{border:1px dashed rgba(255,255,255,.25);padding:4px 10px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:10px;background:repeating-linear-gradient(135deg,rgba(255,255,255,.03) 0 8px,transparent 8px 16px)}
+select{background:rgba(0,0,0,.45);color:var(--fg);border:1px solid var(--line);padding:6px;font-weight:700}
+
+/* --- Modallar ve tam ekran sayfalar --- */
+.modal-wrap{position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;padding-block:12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:rgba(3,5,12,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-sizing:border-box}
+.modal{width:min(880px,100%);max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box}
+.modal.sm{width:min(480px,100%)}
+.modal-head{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(255,207,74,.12),transparent)}
+.modal-head h2{font-size:18px}
+.modal-body{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:14px;min-width:0}
+.close{margin-left:auto;background:rgba(255,255,255,.08);border:1px solid var(--line);width:34px;height:34px;font-size:18px;font-weight:900;flex:none;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+.modal-wrap.page{background:radial-gradient(900px 500px at 15% 0%,rgba(78,232,255,.14),transparent 60%),radial-gradient(900px 600px at 90% 100%,rgba(255,63,180,.16),transparent 60%),linear-gradient(180deg,#0a0e1f,#070a14);backdrop-filter:none;-webkit-backdrop-filter:none;padding:0;align-items:stretch}
+.modal-wrap.page::before{content:"NEONKICK";position:absolute;right:-2vw;bottom:-4vw;font-family:var(--font-display);font-weight:900;font-size:20vw;color:rgba(255,255,255,.025);letter-spacing:.02em;pointer-events:none}
+.modal-wrap.page::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.035) 50%,transparent 60%);background-size:300% 100%;animation:sweep 9s linear infinite;pointer-events:none}
+@keyframes sweep{0%{background-position:120% 0}100%{background-position:-120% 0}}
+.modal-wrap.page .modal{width:100%;max-width:none;max-height:none;height:100%;background:transparent;box-shadow:none;backdrop-filter:none;position:relative;z-index:1;clip-path:none}
+.modal-wrap.page .modal::before,.modal-wrap.page .modal::after{display:none}
+.modal-wrap.page .modal-head{padding:12px max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px));background:linear-gradient(90deg,rgba(255,207,74,.14),rgba(5,8,18,.5))}
+.modal-wrap.page .modal-head h2{font-size:22px}
+.modal-wrap.page .modal-body{padding:18px max(16px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));gap:18px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:rgba(0,0,0,.35);padding:6px 14px;font-family:var(--font-display);font-weight:700;font-size:12px;letter-spacing:.05em;text-transform:uppercase;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px)}
+.tab.active{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#2a1600;border-color:transparent}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.item{--c:#ffcf4a;border:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.04),transparent 40%),var(--panel-2);padding:12px;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;transition:transform .18s,box-shadow .25s,border-color .25s;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+.item:hover{transform:translateY(-4px) scale(1.01);border-color:color-mix(in srgb,var(--c) 60%,transparent)}
+.item .preview{height:120px;position:relative;overflow:hidden;background:radial-gradient(circle at 50% 70%,color-mix(in srgb,var(--c) 38%,transparent) 0%,transparent 65%),rgba(0,0,0,.5)}
+.item .preview canvas{width:100%;height:100%;display:block}
+.item .preview::after{content:"";position:absolute;top:-60%;left:-80%;width:40%;height:220%;background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.22) 50%,transparent 80%);transform:skewX(-20deg);animation:shine 4.5s ease-in-out infinite;pointer-events:none}
+.item b{font-size:16px;font-family:var(--font-display);text-transform:uppercase;letter-spacing:.03em}
+.item .rarity{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+.rar-sıradan{color:#aab}.rar-nadir{color:var(--cyan)}.rar-epik{color:#c09bff}.rar-efsanevi{color:var(--accent)}.rar-mitik{color:var(--magenta)}
+.item.r-epik{border-color:rgba(192,155,255,.35)}.item.r-efsanevi{border-color:rgba(255,207,74,.45)}.item.r-mitik{border-color:rgba(255,63,180,.5)}
+.statbars{display:flex;flex-direction:column;gap:4px}
+.statbar{display:grid;grid-template-columns:52px 1fr 34px;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.statbar i{height:6px;background:rgba(0,0,0,.5);overflow:hidden;display:block}
+.statbar i b{display:block;height:100%;background:linear-gradient(90deg,var(--c),#fff);box-shadow:0 0 8px var(--c)}
+.owned{position:absolute;top:10px;right:10px;background:var(--green);color:#042;font-size:10px;font-weight:900;padding:3px 8px;letter-spacing:.1em;z-index:1}
+.buy{display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border:none;font-family:var(--font-display);font-weight:800;position:relative;overflow:hidden;background:linear-gradient(135deg,#ffd86b,#ff9a1f);color:#2a1600;font-size:13px;letter-spacing:.04em;clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px)}
+.buy.equip{background:linear-gradient(135deg,#7ff3ff,#23b8ff);color:#001a2e}
+.buy.on{background:rgba(255,255,255,.1);color:var(--fg)}
+.buy.cant{background:rgba(255,255,255,.08);color:var(--muted)}
+/* Altın paketleri */
+.pack{position:relative}
+.pack .preview{display:grid;place-items:center}
+.pack .pile{position:relative;width:90px;height:70px}
+.pack .pile i{position:absolute;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b0,#ffcf4a 45%,#b36b00);box-shadow:0 2px 6px rgba(0,0,0,.6),0 0 14px rgba(255,207,74,.5)}
+.pack .amt{font-family:var(--font-display);font-size:22px;font-weight:900;color:var(--accent);text-shadow:0 0 14px rgba(255,207,74,.6)}
+.pack .bonus{position:absolute;left:-30px;top:14px;transform:rotate(-35deg);background:var(--green);color:#042;font-size:10px;font-weight:900;letter-spacing:.1em;padding:2px 34px;z-index:1}
+.pack.best{border-color:var(--accent);box-shadow:var(--glow)}
+
+/* --- Battle pass --- */
+.bp-head{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:18px;background:linear-gradient(135deg,rgba(255,63,180,.3),rgba(78,232,255,.16)),var(--panel-2);border:1px solid rgba(255,63,180,.35);position:relative;overflow:hidden;clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px)}
+.bp-title{font-family:var(--font-display);font-size:28px;font-weight:900;background:linear-gradient(90deg,#ff7bd0,#ffd86b,#7ff3ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.bp-feat{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.bp-feat .f{border:1px solid rgba(255,63,180,.35);padding:10px;background:rgba(0,0,0,.35);display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.bp-feat .f b{font-size:13px}.bp-feat .f canvas{width:100%;height:64px;display:block}
+.bp-track{display:flex;gap:10px;overflow-x:auto;padding:12px 4px 16px;scroll-snap-type:x proximity}
+.bp-tier{flex:0 0 130px;scroll-snap-align:start;display:flex;flex-direction:column;gap:6px}
+.bp-tier .n{font-family:var(--font-display);font-size:11px;text-align:center;color:var(--muted);padding:4px}
+.bp-tier .n.done{color:#2a1600;background:linear-gradient(135deg,var(--accent),var(--accent-2))}
+.reward{border:1px solid var(--line);padding:10px 8px;min-height:70px;display:flex;flex-direction:column;gap:3px;align-items:center;justify-content:center;text-align:center;font-size:12px;background:rgba(0,0,0,.35);position:relative;overflow:hidden}
+.reward.prem{border-color:rgba(255,63,180,.5);background:linear-gradient(180deg,rgba(255,63,180,.2),rgba(0,0,0,.35))}
+.reward.locked{opacity:.45}
+.reward.claimable{border-color:var(--accent);box-shadow:var(--glow);animation:pulse 1.4s infinite;cursor:pointer}
+.reward b{font-size:13px}
+@keyframes pulse{0%,100%{box-shadow:0 0 10px rgba(255,207,74,.3)}50%{box-shadow:0 0 26px rgba(255,207,74,.7)}}
+.bp-xp{height:10px;background:rgba(0,0,0,.5);overflow:hidden;border:1px solid var(--line);flex:1;min-width:140px}
+.bp-xp i{display:block;height:100%;background:linear-gradient(90deg,var(--magenta),var(--accent));box-shadow:0 0 12px var(--magenta)}
+
+/* --- Yetenek ağacı --- */
+.tree{display:flex;flex-direction:column;gap:0;max-width:640px;margin:0 auto;width:100%}
+.node{display:grid;grid-template-columns:64px 1fr auto;gap:14px;align-items:center;padding:12px 14px;border:1px solid var(--line);background:var(--panel-2);position:relative;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.node + .node{margin-top:26px}
+.node + .node::before{content:"";position:absolute;left:44px;top:-27px;width:4px;height:26px;background:rgba(255,255,255,.1)}
+.node .ico{width:64px;height:64px;display:grid;place-items:center;background:rgba(0,0,0,.4);border:1px solid var(--line);margin:0;clip-path:polygon(25% 0,100% 0,100% 75%,75% 100%,0 100%,0 25%)}
+.node .ico svg{width:40px;height:40px}
+.node.locked{opacity:.55}
+.node.open .ico{border-color:var(--cyan);box-shadow:0 0 14px rgba(78,232,255,.35)}
+.node.active{border-color:var(--accent);box-shadow:var(--glow)}
+.node.active .ico{border-color:var(--accent);background:rgba(255,207,74,.12)}
+.node b{font-family:var(--font-display);font-size:14px;text-transform:uppercase}
+.node .lvl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+
+/* --- Rank merdiveni --- */
+.ranks{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.rankcard{border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;align-items:center;gap:6px;background:rgba(0,0,0,.35);text-align:center}
+.rankcard.cur{border-color:var(--accent);box-shadow:var(--glow)}
+.rankcard .rank-ico{width:64px;height:64px}
+
+/* --- Arkadaşlar --- */
+.friend{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);background:var(--panel-2);flex-wrap:wrap}
+.friend .av{width:34px;height:34px;background:linear-gradient(135deg,#444,#666);display:grid;place-items:center;font-weight:900;font-family:var(--font-display);flex:none;clip-path:polygon(25% 0,100% 0,100% 75%,75% 100%,0 100%,0 25%)}
+.friend.on .av{background:linear-gradient(135deg,var(--green),var(--cyan));color:#042}
+
+/* --- Günlük bonus --- */
+.days{display:grid;grid-template-columns:repeat(auto-fit,minmax(86px,1fr));gap:8px}
+.day{border:1px solid var(--line);padding:10px 6px;text-align:center;background:rgba(0,0,0,.35);display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden}
+.day.claimed{opacity:.5}
+.day.today{border-color:var(--accent);box-shadow:var(--glow)}
+.day b{font-family:var(--font-display);font-size:12px}
+
+/* --- Ayarlar --- */
+.setrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);background:rgba(0,0,0,.3)}
+.setrow label{font-weight:700;min-width:140px}
+.setrow input[type=range]{flex:1;min-width:120px;accent-color:var(--accent)}
+
+/* --- Maç HUD --- */
+#s-match{pointer-events:none;justify-content:space-between}
+#s-match > *{pointer-events:none}
+.hud-top{display:flex;justify-content:center}
+.scoreboard{display:flex;align-items:stretch;background:rgba(5,8,18,.8);border:1px solid var(--line);overflow:hidden;clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 100%,0 100%)}
+.scoreboard .team{padding:8px 18px;font-family:var(--font-display);font-weight:700;font-size:13px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;text-transform:uppercase}
+.scoreboard .t0{background:linear-gradient(90deg,rgba(35,184,255,.55),rgba(35,184,255,.1))}
+.scoreboard .t1{background:linear-gradient(270deg,rgba(255,63,180,.55),rgba(255,63,180,.1))}
+.scoreboard .sc{font-family:var(--font-display);font-size:30px;font-weight:900;padding:0 12px;min-width:36px;text-align:center;display:flex;align-items:center;justify-content:center}
+.scoreboard .clock{font-family:var(--font-display);font-size:16px;padding:6px 14px;background:rgba(0,0,0,.6);color:var(--accent);min-width:60px;text-align:center;display:flex;align-items:center;justify-content:center}
+.scoreboard .clock.ot{color:var(--magenta);animation:pulse 1s infinite}
+.hud-bottom{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.hud-bottom > *{pointer-events:auto}
+.stam{width:170px;height:10px;background:rgba(0,0,0,.6);border:1px solid var(--line);overflow:hidden;clip-path:polygon(4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%,0 4px)}
+.stam i{display:block;height:100%;background:linear-gradient(90deg,var(--green),#b6ff8a);box-shadow:0 0 8px var(--green);transition:width .1s}
+.stam i.low{background:linear-gradient(90deg,var(--red),#ff9a1f)}
+.ab{width:60px;height:60px;border:2px solid var(--line);background:rgba(5,8,18,.8);display:grid;place-items:center;position:relative;overflow:hidden;font-family:var(--font-display);font-size:10px;font-weight:900;text-align:center;line-height:1.1;clip-path:polygon(25% 0,100% 0,100% 75%,75% 100%,0 100%,0 25%)}
+.ab .cd{position:absolute;inset:0;background:rgba(0,0,0,.65);transform-origin:bottom;transform:scaleY(1);transition:transform .1s linear}
+.ab.ready{border-color:var(--accent);box-shadow:var(--glow)}
+.ab .key{position:absolute;bottom:3px;right:5px;font-size:9px;color:var(--muted)}
+.qc{display:flex;gap:6px;flex-wrap:wrap;max-width:420px}
+.qc button{border:1px solid var(--line);background:rgba(5,8,18,.8);padding:6px 12px;font-weight:700;font-size:13px}
+.qc button:hover{border-color:var(--cyan)}
+#tbChat{display:none}
+.bubbles{position:fixed;left:max(16px,env(safe-area-inset-left,0px));top:max(16px,env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:6px;align-items:flex-start;z-index:4;pointer-events:none;max-width:min(360px,70vw)}
+.bubble{background:rgba(5,8,18,.85);border:1px solid var(--line);padding:6px 14px;font-weight:700;animation:bubin .25s ease-out;transition:opacity .4s;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
+.bubble.old{opacity:.5}
+.bubble b{color:var(--cyan)}
+@keyframes bubin{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:none}}
+@keyframes bub{0%{opacity:0;transform:translateY(8px)}10%,80%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-8px)}}
+.countdown{position:fixed;inset:0;display:grid;place-items:center;z-index:4;pointer-events:none}
+.countdown div{font-family:var(--font-display);font-size:clamp(90px,22vw,200px);font-weight:900;color:#fff;text-shadow:0 0 30px var(--accent),0 0 80px var(--accent-2);animation:cd 1s ease-out}
+@keyframes cd{0%{transform:scale(2);opacity:0}20%{transform:scale(1);opacity:1}80%{opacity:1}100%{transform:scale(.85);opacity:0}}
+.goalflash{position:fixed;inset:0;display:grid;place-items:center;z-index:4;pointer-events:none}
+.goalflash div{font-family:var(--font-display);font-size:clamp(60px,16vw,150px);font-weight:900;letter-spacing:.1em;background:linear-gradient(90deg,#fff,var(--accent),#fff);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 30px rgba(255,207,74,.9));animation:goal 2.6s ease-out forwards}
+.goalflash small{display:block;font-size:.22em;color:#fff;-webkit-text-fill-color:#fff;letter-spacing:.3em;text-align:center}
+@keyframes goal{0%{transform:scale(.3) rotate(-6deg);opacity:0}15%{transform:scale(1.15) rotate(2deg);opacity:1}30%{transform:scale(1)}85%{opacity:1}100%{opacity:0;transform:scale(1.1)}}
+/* Dokunmatik kontroller */
+.touch{position:fixed;inset:0;display:none;z-index:4;pointer-events:none}
+.touch .zone{position:absolute;left:0;top:18%;width:46%;height:82%;pointer-events:auto;touch-action:none}
+.touch .stick{position:absolute;left:max(24px,env(safe-area-inset-left,0px));bottom:max(24px,env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;border:2px solid var(--line);background:rgba(255,255,255,.06);pointer-events:none;touch-action:none;transition:opacity .2s}
+.touch .stick i{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.35)}
+.touch .tb{position:absolute;right:max(24px,env(safe-area-inset-right,0px));width:70px;height:70px;border-radius:50%;border:2px solid var(--line);background:rgba(255,207,74,.22);pointer-events:auto;font-family:var(--font-display);font-weight:900;font-size:11px;touch-action:none;overflow:hidden;color:var(--fg);transform:scale(var(--hs,1))}
+.touch .tb .fill{position:absolute;inset:0;border-radius:50%;background:conic-gradient(var(--accent) calc(var(--p,0) * 1%),transparent 0);opacity:.55;pointer-events:none}
+.touch .tb .cd{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.6);transform-origin:bottom;transform:scaleY(0);pointer-events:none}
+.touch .tb.ready{border-color:var(--accent);box-shadow:var(--glow)}
+.touch .tb.on{background:rgba(67,230,139,.35);border-color:var(--green)}
+.touch .tb.pressed{filter:brightness(1.4);transform:scale(calc(var(--hs,1) * .94))}
+@media (pointer:coarse){.touch{display:block}.qc{display:none}.qc.open{display:grid;grid-template-columns:1fr 1fr;position:fixed;left:50%;transform:translateX(-50%);top:max(56px,calc(env(safe-area-inset-top,0px) + 56px));width:min(360px,70vw);background:rgba(5,8,18,.92);border:1px solid var(--line);padding:8px;gap:6px;max-height:60vh;overflow:auto;z-index:6}#tbChat{display:inline-flex;position:fixed;right:max(84px,calc(env(safe-area-inset-right,0px) + 84px));top:max(14px,env(safe-area-inset-top,0px))}}
+/* HUD düzenleme */
+body.hud-edit .touch{display:block;pointer-events:auto}
+body.hud-edit .touch .stick{pointer-events:auto;opacity:1}
+body.hud-edit .touch .zone{pointer-events:none}
+body.hud-edit .touch .tb,body.hud-edit .touch .stick,body.hud-edit .hud-bottom,body.hud-edit #tbChat{outline:2px dashed var(--accent);cursor:move}
+.hud-edit-bar{position:fixed;left:50%;transform:translateX(-50%);top:max(60px,calc(env(safe-area-inset-top,0px) + 60px));z-index:7;display:none;gap:8px;align-items:center;padding:8px 12px}
+body.hud-edit .hud-edit-bar{display:flex}
+body.hud-edit #s-lobby,body.hud-edit .modal-wrap{display:none!important}
+
+/* --- Sonuç --- */
+#s-result{align-items:center;justify-content:center;background:radial-gradient(800px 400px at 50% 30%,rgba(255,207,74,.12),transparent 60%),rgba(3,5,12,.6)}
+.result{width:min(560px,100%);padding:26px 28px 24px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;box-sizing:border-box}
+.result h1{font-size:clamp(34px,8vw,62px);line-height:1}
+.result h1.win{background:linear-gradient(90deg,#fff6cc,var(--accent),#ff7a1f);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 24px rgba(255,170,40,.6))}
+.result h1.lose{color:var(--muted)}
+.result h1.draw{color:var(--cyan)}
+.res-score{display:flex;align-items:center;gap:14px;font-family:var(--font-display);font-weight:900;font-size:40px}
+.res-score .tn{font-size:13px;font-weight:700;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 10px;text-transform:uppercase}
+.res-score .tn.a{background:linear-gradient(90deg,rgba(35,184,255,.5),transparent);color:#9ff3ff}.res-score .tn.b{background:linear-gradient(270deg,rgba(255,63,180,.5),transparent);color:#ffb3e3}
+.rewards{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.rewards .r{border:1px solid var(--line);padding:10px 16px;background:rgba(0,0,0,.4);font-family:var(--font-display);font-weight:700;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px);min-width:64px}
+.rewards .r small{display:block;font-family:var(--font-body);color:var(--muted);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.rewards .r.up{border-color:rgba(67,230,139,.6);color:var(--green)}.rewards .r.down{border-color:rgba(255,90,106,.6);color:var(--red)}
+.lvlup{font-family:var(--font-display);font-weight:900;font-size:18px;letter-spacing:.12em;color:#dffbff;animation:lvl 1.2s ease-in-out infinite}
+@keyframes lvl{0%,100%{text-shadow:0 0 8px var(--cyan),0 0 22px rgba(78,232,255,.6)}50%{text-shadow:0 0 16px #fff,0 0 40px var(--cyan),0 0 70px rgba(78,232,255,.8)}}
+.res-xp{width:100%;max-width:360px;display:flex;flex-direction:column;gap:4px}
+.res-xp .xpbar{width:100%;height:10px}
+
+/* --- Toast --- */
+.toasts{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:max(16px,env(safe-area-inset-top,0px));z-index:9;display:flex;flex-direction:column;gap:8px;max-width:min(360px,80vw)}
+.toast{background:var(--panel-2);border:1px solid var(--accent);padding:10px 14px;font-weight:700;box-shadow:var(--glow);animation:bub 4s forwards;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.toast.inv{border-color:var(--cyan);pointer-events:auto;cursor:pointer;animation-duration:12s}
+
+/* --- Reklam --- */
+.adbox{height:180px;display:grid;place-items:center;background:repeating-linear-gradient(45deg,rgba(255,255,255,.04) 0 10px,transparent 10px 20px),rgba(0,0,0,.5);border:1px dashed rgba(255,255,255,.3);font-family:var(--font-display);text-align:center}
+.prog{height:6px;background:rgba(0,0,0,.5);overflow:hidden}
+.prog i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s linear}
+
+.rotate{position:fixed;inset:0;z-index:50;display:none;place-items:center;background:var(--bg);text-align:center;padding:24px;box-sizing:border-box}
+.rotate .ph{width:46px;height:80px;border:3px solid var(--accent);border-radius:10px;margin:0 auto 14px;animation:rot 1.6s ease-in-out infinite}
+@keyframes rot{0%,20%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}
+@media (pointer:coarse) and (orientation:portrait){.rotate{display:grid}}
+/* Telefon (yatay) ve dar ekranlar: kompakt lobi */
+@media (max-width:640px), ((pointer:coarse) and (max-height:520px)){
+  .topbar{padding:5px 10px;gap:8px}
+  .topbar .nav{gap:5px}
+  .icon-btn{padding:5px 8px;font-size:10px}
+  .icon-btn .ico{width:13px;height:13px;margin-right:4px}
+  .xpbar{min-width:60px}
+  .topbar .col .row:last-child{display:none}
+  .avatar{width:32px;height:32px;font-size:14px}
+  .rank .col{display:none}
+  .rank{padding:2px}
+  .rank-ico{width:30px;height:30px}
+  .pill{font-size:12px;padding:3px 8px}
+  .play-card,.side-card{padding:8px 12px}
+  .play-card{width:min(330px,100%);flex:1}
+  .play-card h2{font-size:14px}
+  .mode-grid{display:none}
+  .mode-carousel{display:flex}
+  .mode-play{display:block;padding:8px 14px;font-size:14px}
+  .mode-cur{padding:7px 10px}
+  .lobby-bottom{gap:8px;align-items:stretch}
+  .side-card{min-width:0;flex:1}
+  .side-card .ad-banner{display:none}
+  .scoreboard .team{max-width:90px;font-size:11px;padding:6px 12px}
+  .scoreboard .sc{font-size:22px}
+  .modal-head h2{font-size:16px}
+  .countdown div{font-size:clamp(60px,18vh,120px)}
+  .result{padding:14px 16px}
+  .result h1{font-size:30px}
+  .res-score{font-size:28px}
+}
+@media (max-width:640px) and (orientation:portrait){
+  .lobby-bottom{flex-direction:column}
+  .topbar{flex-wrap:wrap;overflow:visible}
+  .topbar .nav{width:100%;order:9}
+}
+@media (pointer:coarse){
+  .hud-bottom{position:fixed;left:max(24px,env(safe-area-inset-left,0px));bottom:max(156px,calc(env(safe-area-inset-bottom,0px) + 156px));top:auto;flex-direction:column;align-items:flex-start;gap:3px}
+  .kb{display:none}
+  .hud-bottom .ab,.hud-bottom .spacer{display:none}
+  .hud-bottom .stam{width:120px;height:8px}
+  .hud-bottom .tiny{font-size:10px}
+  #btnLeave{position:fixed;right:max(16px,env(safe-area-inset-right,0px));top:max(14px,env(safe-area-inset-top,0px));margin:0}
+  .bubbles{max-width:46vw}
+}
+@media (max-height:430px){ .topbar .col .row:last-child{display:none} }
+@media (prefers-reduced-motion:reduce){.shine::after,.reward.claimable,.clock.ot,.lvlup,.modal-wrap.page::after,.item .preview::after{animation:none}}
+</style>
+
+<canvas id="gl"></canvas>
+<canvas id="fx"></canvas>
+
+<!-- AÇILIŞ -->
+<section id="s-nick" class="screen">
+  <div class="logo">NEON<em>KICK</em><small>3D ARENA FUTBOLU</small></div>
+  <div class="title-menu" id="titleMenu">
+    <button class="btn primary shine" id="titlePlay" style="font-size:22px;padding:14px 56px">Oyna</button>
+    <button class="btn" id="titleSettings">Ayarlar</button>
+    <div class="tiny" id="titleNick"></div>
+  </div>
+  <div class="nick-card panel" id="nickForm" style="margin-top:22px" hidden>
+    <div class="field">
+      <label class="tiny" for="nickInput">Takma adını seç (bir kez, kalıcı)</label>
+      <input id="nickInput" maxlength="16" placeholder="ör. KaleciKral" autocomplete="off">
+      <div class="err" id="nickErr"></div>
+    </div>
+    <button class="btn primary shine" id="nickBtn">Arenaya Gir</button>
+    <div class="tiny" id="nickNote">Takma adlar sunucuda kayıt altına alınır; alınmış bir ad tekrar alınamaz.</div>
+  </div>
+</section>
+
+<!-- LOBİ -->
+<section id="s-lobby" class="screen" hidden>
+  <div class="topbar panel">
+    <div class="avatar" id="avatarLetter">K</div>
+    <div class="col" style="gap:4px;min-width:0;flex:0 0 auto;max-width:200px">
+      <div class="row" style="gap:8px;flex-wrap:nowrap"><b id="lbNick" style="font-family:var(--font-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase">—</b><span class="pill" id="lbLevel">Lv 1</span><span class="pill" id="lbPrestige" hidden>★</span></div>
+      <div class="row" style="gap:8px;flex-wrap:nowrap"><div class="xpbar"><i id="lbXp" style="width:0%"></i></div><span class="tiny num" id="lbXpTxt" style="white-space:nowrap">0 / 125 XP</span></div>
+    </div>
+    <button class="rank" id="lbRank"><span class="rank-ico" id="rankIco"></span><div class="col" style="gap:0"><b style="font-size:13px;font-family:var(--font-display)" id="rankName">Bronz</b><span class="tiny num" id="rankPts">0 RP</span></div></button>
+    <div class="spacer"></div>
+    <button class="pill gold" id="lbCoins" style="cursor:pointer"><span class="coin"></span><span class="num" id="coinTxt">0</span><span style="color:var(--green);font-weight:900">+</span></button>
+    <div class="nav">
+      <button class="icon-btn shine" id="btnShop" data-ico="shop">Mağaza</button>
+      <button class="icon-btn" id="btnPass" data-ico="pass">Battle Pass<span class="dot" id="passDot" hidden></span></button>
+      <button class="icon-btn" id="btnSkills" data-ico="skills">Yetenekler<span class="dot" id="skillDot" hidden></span></button>
+      <button class="icon-btn" id="btnFriends" data-ico="friends">Arkadaşlar<span class="dot" id="friendDot" hidden></span></button>
+      <button class="icon-btn" id="btnDaily" data-ico="daily">Günlük<span class="dot" id="dailyDot" hidden></span></button>
+      <button class="icon-btn" id="btnSettings" data-ico="gear" aria-label="Ayarlar"></button>
+    </div>
+  </div>
+
+  <div class="lobby-bottom">
+    <div class="play-card panel">
+      <div class="row"><h2 style="font-size:15px" class="glow-text">Maç Bul</h2><span class="spacer"></span><span class="status" id="netStatus"><i></i><span>Çevrimdışı</span></span></div>
+      <div class="mode-grid">
+        <button class="mode ranked shine" data-mode="1v1" data-kind="ranked"><b>Dereceli 1v1</b><span>Rank puanı kazan</span></button>
+        <button class="mode ranked" data-mode="2v2" data-kind="ranked"><b>Dereceli 2v2</b><span>Takım halinde</span></button>
+        <button class="mode" data-mode="1v1" data-kind="bot"><b>Bota Karşı 1v1</b><span>Antrenman, XP verir</span></button>
+        <button class="mode" data-mode="2v2" data-kind="bot"><b>Bota Karşı 2v2</b><span>Bot takım arkadaşı</span></button>
+        <button class="mode" data-kind="custom"><b>Özel Maç</b><span>Kod ile arkadaş davet</span></button>
+      </div>
+      <div class="mode-carousel"><button class="icon-btn" id="modePrev" aria-label="Önceki mod">◀</button><div class="mode-cur"><b id="modeTitle">Bota Karşı 1v1</b><span id="modeDesc">Antrenman, XP verir</span></div><button class="icon-btn" id="modeNext" aria-label="Sonraki mod">▶</button></div>
+      <button class="btn primary shine mode-play" id="modePlay">Oyna</button>
+      <div class="tiny" id="queueTxt"></div>
+    </div>
+    <div class="side-card panel">
+      <div class="loadout"><div class="boot-chip" id="bootChip"></div><div class="col" style="gap:0"><b id="bootName">Çırak</b><span class="tiny" id="bootStats">G 1.0 · H 1.0 · K 1.0</span></div></div>
+      <div class="loadout"><div class="ab" id="lbAb" style="width:36px;height:36px;font-size:8px">—</div><div class="col" style="gap:0"><b id="abName">Yetenek yok</b><span class="tiny" id="abNote">5. seviyede açılır</span></div></div>
+      <div class="row"><span class="tiny">Stadyum</span><select id="stadiumSel"></select></div>
+      <div class="ad-banner"><span>REKLAM ALANI · 320×50</span><button class="btn ghost" style="padding:4px 10px;font-size:11px" id="btnAdReward">İzle +40 <span class="coin"></span></button></div>
+    </div>
+  </div>
+</section>
+
+<!-- MAÇ HUD -->
+<section id="s-match" class="screen" hidden>
+  <div class="hud-top">
+    <div class="scoreboard">
+      <div class="team t0" id="hudT0">Sen</div><div class="sc num" id="hudS0">0</div>
+      <div class="clock num" id="hudClock">2:00</div>
+      <div class="sc num" id="hudS1">0</div><div class="team t1" id="hudT1">Rakip</div>
+    </div>
+  </div>
+  <div class="hud-bottom" id="hudBottom">
+    <div class="col" style="gap:4px"><span class="tiny">Dayanıklılık<span class="kb"> · Shift</span></span><div class="stam"><i id="hudStam" style="width:100%"></i></div></div>
+    <div class="ab" id="hudAb"><span id="hudAbName">—</span><div class="cd" id="hudAbCd"></div><span class="key">E</span></div>
+    <div class="spacer"></div>
+    <div class="qc" id="qcBar"></div>
+    <button class="icon-btn" id="btnLeave">Ayrıl</button>
+    <button class="icon-btn" id="tbChat">💬 Sohbet</button>
+  </div>
+  <div class="touch" id="touch">
+    <div class="zone" id="touchZone"></div>
+    <div class="stick" id="stick"><i id="stickKnob"></i></div>
+    <button class="tb" id="tbKick" style="bottom:max(100px,calc(env(safe-area-inset-bottom,0px) + 100px))"><div class="fill" id="tbKickFill"></div><span>ŞUT</span></button>
+    <button class="tb" id="tbAb" style="bottom:max(24px,env(safe-area-inset-bottom,0px));right:max(104px,calc(env(safe-area-inset-right,0px) + 104px))"><span id="tbAbName">YET.</span><div class="cd" id="tbAbCd"></div></button>
+    <button class="tb" id="tbSprint" style="bottom:max(24px,env(safe-area-inset-bottom,0px))"><span>KOŞ</span></button>
+  </div>
+</section>
+<div class="bubbles" id="bubbles"></div>
+<div class="hud-edit-bar panel" id="hudEditBar"><span class="tiny">Tuşları sürükle</span><button class="btn cyan" id="hudSave" style="padding:6px 12px;font-size:12px">Kaydet</button><button class="btn" id="hudReset" style="padding:6px 12px;font-size:12px">Sıfırla</button></div>
+
+<!-- SONUÇ -->
+<section id="s-result" class="screen" hidden>
+  <div class="result panel">
+    <h1 id="resTitle" class="win">GALİBİYET</h1>
+    <div class="res-score"><span class="tn a" id="resA">Sen</span><span class="num" id="resScore">0 - 0</span><span class="tn b" id="resB">Rakip</span></div>
+    <div class="row" id="resRank" hidden style="justify-content:center"></div>
+    <div class="rewards" id="resRewards"></div>
+    <div class="res-xp"><div class="xpbar"><i id="resXp" style="width:0%"></i></div><span class="tiny num" id="resXpTxt"></span></div>
+    <div class="lvlup" id="resLvl" hidden>SEVİYE ATLADIN!</div>
+    <div class="row"><button class="btn primary shine" id="btnAgain">Tekrar Oyna</button><button class="btn" id="btnLobby">Lobiye Dön</button></div>
+  </div>
+</section>
+
+<div class="rotate" id="rotate"><div><div class="ph"></div><b style="font-family:var(--font-display);font-size:18px">Telefonu yatay çevir</b><div class="tiny" style="margin-top:6px">NeonKick yatay oynanır</div></div></div>
+<div class="toasts" id="toasts"></div>
+<div id="modals"></div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script src="sim.js"></script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
+const SIM = window.SIM;
+
+/* ================= KAYIT ================= */
+const SAVE_KEY = 'golkafa_save_v1';
+const DEF = { nick: null, token: null, coins: 350, xp: 0, level: 1, prestige: 0, maxLevel: 1, rp: 0, wins: 0, played: 0,
+  boots: 'basic', ownedBoots: ['basic'], effect: 'confetti', ownedEffects: ['confetti'], stadium: 'night', ownedStadiums: ['night'],
+  ability: null, seenAb: [], bpXp: 0, bpPremium: false, bpClaimed: [], daily: { last: null, streak: 0 }, friends: [], server: '', volume: 0.8, music: 0.7, bloom: true, notif: false, lang: 'en', hud: null, sprintToggle: true };
+let S = Object.assign({}, DEF);
+try { const raw = localStorage.getItem(SAVE_KEY); if (raw) S = Object.assign({}, DEF, JSON.parse(raw)); } catch (e) {}
+function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+
+/* ================= TABLOLAR ================= */
+const EFFECTS = {
+  confetti:  { name: 'Konfeti',        price: 0,    colors: ['#ffcf4a', '#4ee8ff', '#ff3fb4', '#43e68b', '#ffffff'], n: 220, speed: 14, grav: 9,  size: .22, life: 2.6, shape: 'box',   rarity: 'sıradan', desc: 'Klasik kutlama.' },
+  fireworks: { name: 'Havai Fişek',    price: 700,  colors: ['#ff5a6a', '#ffcf4a', '#ffffff'],                       n: 320, speed: 22, grav: 5,  size: .16, life: 2.2, shape: 'dot',   rarity: 'nadir',   desc: 'Gökyüzünde patlayan üç dalga.' },
+  lightning: { name: 'Yıldırım',       price: 1200, colors: ['#9fe9ff', '#ffffff', '#4ee8ff'],                       n: 260, speed: 30, grav: 0,  size: .14, life: 1.2, shape: 'dot',   rarity: 'epik',    desc: 'Topun düştüğü yere yıldırım iner.' },
+  goldrain:  { name: 'Altın Yağmuru',  price: 1800, colors: ['#ffe28a', '#ffcf4a', '#b36b00'],                       n: 360, speed: 6,  grav: 12, size: .2,  life: 3.2, shape: 'box',   rarity: 'epik',    desc: 'Tribünlerden altın yağar.', rain: true },
+  neon:      { name: 'Neon Halkalar',  price: 2200, colors: ['#ff3fb4', '#4ee8ff', '#c09bff'],                       n: 300, speed: 18, grav: 0,  size: .15, life: 2,   shape: 'ring',  rarity: 'epik',    desc: 'Genişleyen neon dalgalar.' },
+  flames:    { name: 'Alev Patlaması', price: 2600, colors: ['#ff4d2e', '#ffa030', '#ffe28a'],                       n: 380, speed: 12, grav: -6, size: .24, life: 1.8, shape: 'dot',   rarity: 'efsanevi', desc: 'Kaleden yükselen alev sütunu.' },
+  frost:     { name: 'Buz Kırıkları',  price: 2600, colors: ['#b8ecff', '#ffffff', '#7fd3ff'],                       n: 280, speed: 16, grav: 7,  size: .18, life: 2.4, shape: 'shard', rarity: 'efsanevi', desc: 'Kale donar, kristaller saçılır.' },
+  galaxy:    { name: 'Galaksi',        price: 4800, colors: ['#c09bff', '#4ee8ff', '#ffffff', '#ff3fb4'],            n: 500, speed: 9,  grav: 0,  size: .12, life: 3.4, shape: 'dot',   rarity: 'mitik',   desc: 'Sahanın üstünde dönen yıldız bulutu.', swirl: true },
+  hearts:    { name: 'Kalpler',        price: 900,  colors: ['#ff6b9d', '#ff3fb4', '#ffffff'],                       n: 160, speed: 8,  grav: -3, size: .26, life: 3,   shape: 'box',   rarity: 'nadir',   desc: 'Tatlı bir gol kutlaması.' },
+};
+const STADIUMS = {
+  night: { name: 'Gece Arenası',  price: 0,    sky: 0x05070f, fog: 0x080b18, grass: ['#1d7f40', '#228a46'], line: 0xffffff, light: 0xfff4d6, wall: 0x4ee8ff, stand: 0x1a2140, crowd: ['#ff3fb4', '#4ee8ff', '#ffffff', '#ffcf4a'], rarity: 'sıradan', desc: 'Projektörler altında klasik gece maçı.' },
+  coast: { name: 'Sahil Stadı',   price: 1800, sky: 0xff8a4a, fog: 0xffa36b, grass: ['#2f9a44', '#36a44b'], line: 0xfff6e0, light: 0xffd9a8, wall: 0xffcf4a, stand: 0x8a4a2a, crowd: ['#ffffff', '#ffcf4a', '#ff6a1a', '#4ee8ff'], rarity: 'nadir', desc: 'Gün batımı, palmiyeler ve deniz.', coast: true },
+  neon:  { name: 'Neon Kubbe',    price: 3000, sky: 0x02010a, fog: 0x0a0318, grass: ['#102a2e', '#12303a'], line: 0x4ee8ff, light: 0xff3fb4, wall: 0xff3fb4, stand: 0x12062a, crowd: ['#ff3fb4', '#4ee8ff', '#c09bff', '#43e68b'], rarity: 'epik', desc: 'Siber şehrin altında, çizgiler ışıldar.', neon: true },
+};
+const QUICK = ['İyi oyun!', 'Ne gol!', 'Pas ver!', 'Savun!', 'Yetişiyorum!', 'Tebrikler!', 'Şanslı…', 'Tekrar?'];
+const SAVE_LANG_DEFAULT = 'en';
+const RANKS = [['Bronz', 0, '#b87333'], ['Gümüş', 200, '#c0c6d4'], ['Altın', 500, '#ffcf4a'], ['Platin', 900, '#7ff3ff'], ['Elmas', 1400, '#b8ecff'], ['Şampiyon', 2000, '#ff3fb4']];
+const DAILY = [{ c: 40, x: 30 }, { c: 60, x: 40 }, { c: 80, x: 50 }, { c: 100, x: 60 }, { c: 140, x: 80 }, { c: 180, x: 100 }, { c: 350, x: 200, effect: 'hearts' }];
+// Battle pass: 30 kademe, ücretsiz ve premium hat
+const BP_TIER_XP = 400;
+const BP = []; for (let i = 1; i <= 30; i++) {
+  const free = i % 5 === 0 ? { c: 150 } : i % 3 === 0 ? { x: 120 } : { c: 40 };
+  let prem = { c: 120 };
+  if (i === 1) prem = { boots: 'ember' }; else if (i === 7) prem = { effect: 'fireworks' }; else if (i === 12) prem = { stadium: 'coast' };
+  else if (i === 18) prem = { effect: 'neon' }; else if (i === 24) prem = { boots: 'royal' }; else if (i === 30) prem = { effect: 'galaxy' };
+  else if (i % 4 === 0) prem = { c: 300 }; else if (i % 5 === 0) prem = { x: 250 };
+  BP.push({ free, prem });
+}
+const BP_PRICE = 2400;
+function xpNeed(l) { return 90 + l * 35; }
+function rankOf(rp) { let r = RANKS[0]; RANKS.forEach((x) => { if (rp >= x[1]) r = x; }); return r; }
+function rewardLabel(r) { if (r.c) return `${r.c} Altın`; if (r.x) return `${r.x} XP`; if (r.boots) return SIM.BOOTS[r.boots].name + ' Krampon'; if (r.effect) return EFFECTS[r.effect].name + ' Efekti'; if (r.stadium) return STADIUMS[r.stadium].name; return '?'; }
+function giveReward(r) {
+  if (r.c) S.coins += r.c; if (r.x) addXp(r.x);
+  if (r.boots && !S.ownedBoots.includes(r.boots)) S.ownedBoots.push(r.boots);
+  if (r.effect && !S.ownedEffects.includes(r.effect)) S.ownedEffects.push(r.effect);
+  if (r.stadium && !S.ownedStadiums.includes(r.stadium)) S.ownedStadiums.push(r.stadium);
+  save();
+}
+
+/* ================= SES (sentez) ================= */
+const AUDIO = (() => {
+  let ctx = null, master = null, sfx = null, rev = null, musicBus = null;
+  function init() {
+    if (ctx) return; ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 1;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 3; comp.attack.value = .004; comp.release.value = .2; master.connect(comp); comp.connect(ctx.destination);
+    sfx = ctx.createGain(); sfx.gain.value = S.volume; sfx.connect(master);
+    musicBus = ctx.createGain(); musicBus.gain.value = S.music == null ? .8 : S.music; musicBus.connect(master);
+    // Stadyum reverb: üstel sönen gürültü
+    const n = Math.ceil(ctx.sampleRate * 1.6), b = ctx.createBuffer(2, n, ctx.sampleRate); for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.5); }
+    const conv = ctx.createConvolver(); conv.buffer = b; rev = ctx.createGain(); rev.gain.value = .28; rev.connect(conv); conv.connect(sfx);
+  }
+  function vol(v) { S.volume = v; if (sfx) sfx.gain.value = v; }
+  function musicVol(v) { S.music = v; if (musicBus) musicBus.gain.value = v; }
+  function noiseBuf(sec) { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+  function env(g, t, a, d, peak) { g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+  function tone(freq, type, a, d, peak, t, to, wet) {
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.setValueAtTime(freq, t);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, t + a + d);
+    env(g, t, a, d, peak); o.connect(g); g.connect(sfx); if (wet) g.connect(rev); o.start(t); o.stop(t + a + d + .05);
+  }
+  function noise(t, a, d, peak, type, freq, q, wet) { const n = ctx.createBufferSource(); n.buffer = noiseBuf(a + d + .1); const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q || 1; const g = ctx.createGain(); env(g, t, a, d, peak); n.connect(f); f.connect(g); g.connect(sfx); if (wet) g.connect(rev); n.start(t); n.stop(t + a + d + .1); }
+  const A = {
+    init, vol, musicVol, resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); }, ctx() { return ctx; }, master() { return musicBus; },
+    click() { if (!ctx) return; const t = ctx.currentTime; tone(820, 'sine', .002, .07, .09, t, 520, true); tone(1640, 'sine', .001, .03, .025, t); },
+    hover() { if (!ctx) return; const t = ctx.currentTime; tone(2200, 'sine', .002, .04, .03, t); },
+    deny() { if (!ctx) return; const t = ctx.currentTime; tone(392, 'sine', .01, .12, .07, t); tone(311, 'sine', .01, .18, .07, t + .11); },
+    coin() { if (!ctx) return; const t = ctx.currentTime; tone(1320, 'triangle', .003, .12, .1, t); tone(1980, 'triangle', .003, .25, .1, t + .07, null, true); },
+    unlock() { if (!ctx) return; const t = ctx.currentTime; [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, 'triangle', .01, .4, .11, t + i * .07, null, true)); },
+    buy() { A.unlock(); setTimeout(() => A.coin(), 120); },
+    kick(pow, kind) {
+      if (!ctx) return; const t = ctx.currentTime, p = Math.min(1.7, pow / 19);
+      tone(120 * p, 'sine', .003, .16, .9 * p, t, 38, true);                    // gövde
+      noise(t, .002, .09, .55 * p, 'bandpass', 700 + 300 * p, .8, true);         // deri "pat"
+      noise(t, .001, .03, .3 * p, 'highpass', 5000, 1);                           // tık
+      if (kind === 'power' || kind === 'thunder') { tone(90, 'triangle', .01, .45, .35, t, 30, true); A.whoosh(); }
+      if (kind === 'curve') tone(700, 'sine', .01, .4, .1, t, 1400, true);
+      if (kind === 'lob') tone(420, 'triangle', .02, .45, .12, t, 900, true);
+    },
+    whoosh() { if (!ctx) return; const t = ctx.currentTime; const n = ctx.createBufferSource(); n.buffer = noiseBuf(.6); const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(2600, t + .3); f.Q.value = 2; const g = ctx.createGain(); env(g, t, .05, .4, .3); n.connect(f); f.connect(g); g.connect(sfx); g.connect(rev); n.start(t); n.stop(t + .7); },
+    touch() { if (!ctx) return; const t = ctx.currentTime; tone(110, 'sine', .003, .07, .22, t, 50); noise(t, .001, .04, .12, 'bandpass', 900, .8); },
+    bounce(v) { if (!ctx) return; const t = ctx.currentTime, k = Math.min(.5, v / 15); tone(95, 'sine', .003, .1, k, t, 45); noise(t, .001, .05, k * .4, 'lowpass', 1200); },
+    wall(v) { if (!ctx) return; const t = ctx.currentTime, k = Math.min(.6, v / 18); noise(t, .002, .14, k, 'lowpass', 520, 1, true); tone(70, 'sine', .002, .16, k * .6, t, 40); tone(1800, 'sine', .001, .05, k * .15, t); },
+    post() { if (!ctx) return; const t = ctx.currentTime; tone(1150, 'sine', .002, 1.1, .35, t, null, true); tone(1725, 'sine', .002, .6, .18, t, null, true); tone(2300, 'sine', .002, .3, .08, t); tone(300, 'triangle', .002, .35, .3, t, 200, true); },
+    tackle() { if (!ctx) return; const t = ctx.currentTime; tone(150, 'triangle', .004, .18, .3, t, 60, true); noise(t, .002, .1, .35, 'bandpass', 600, .7, true); },
+    whistle(long) {
+      if (!ctx) return; const t = ctx.currentTime, d = long ? 1.1 : .4;
+      for (let k = 0; k < 2; k++) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = k ? 2950 : 3200;
+        const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 30; lg.gain.value = 120; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t);
+        env(g, t, .015, d, .11); o.connect(g); g.connect(sfx); g.connect(rev); o.start(t); o.stop(t + d + .1); lfo.stop(t + d + .1); }
+      noise(t, .02, d, .18, 'bandpass', 3100, 8, true);
+    },
+    horn() { if (!ctx) return; const t = ctx.currentTime; [110, 165, 220, 277].forEach((f) => { tone(f, 'sawtooth', .06, 1.4, .13, t, null, true); tone(f * 1.005, 'square', .06, 1.4, .05, t); }); },
+    countdown() {},
+    crowd() {},
+    cheer() { if (!ctx) return; const t = ctx.currentTime; noise(t, .25, 2.4, .45, 'bandpass', 1100, .5, true); noise(t + .1, .2, 2, .25, 'bandpass', 2400, .6, true); A.horn(); },
+    // Gol yeme: yumuşak, inen iki nota + uzak tribün homurtusu
+    groan() { if (!ctx) return; const t = ctx.currentTime; tone(440, 'triangle', .02, .5, .09, t, 392, true); tone(330, 'triangle', .02, .9, .09, t + .32, 262, true); noise(t, .3, 1.4, .12, 'bandpass', 420, .7, true); },
+    ability(id) { if (!ctx) return; const t = ctx.currentTime; if (id === 'dash') A.whoosh(); else if (id === 'boost') [440, 660, 880].forEach((f, i) => tone(f, 'sine', .01, .3, .14, t + i * .06, null, true)); else [660, 990].forEach((f, i) => tone(f, 'triangle', .01, .4, .13, t + i * .08, f * 1.5, true)); },
+    win() { if (!ctx) return; const t = ctx.currentTime; [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => tone(f, 'triangle', .01, .5, .13, t + i * .12, null, true)); A.cheer(); },
+    lose() { if (!ctx) return; const t = ctx.currentTime; [392, 349, 311, 262].forEach((f, i) => tone(f, 'triangle', .02, .6, .11, t + i * .22, null, true)); },
+  };
+  return A;
+})();
+
+/* ================= UI YARDIMCILARI ================= */
+const $ = (id) => document.getElementById(id);
+function toast(msg, cls, onclick) { const d = document.createElement('div'); d.className = 'toast' + (cls ? ' ' + cls : ''); d.textContent = msg; if (onclick) d.onclick = () => { onclick(); d.remove(); }; $('toasts').appendChild(d); setTimeout(() => d.remove(), cls === 'inv' ? 12000 : 4000); }
+function show(id) { ['s-nick', 's-lobby', 's-match', 's-result'].forEach((s) => { $(s).hidden = s !== id; }); }
+let currentModal = null;
+function modal(title, bodyHtml, onReady, opts) {
+  closeModal(); const w = document.createElement('div'); w.className = 'modal-wrap' + (opts && opts.page ? ' page' : '');
+  w.innerHTML = `<div class="modal panel${opts && opts.small ? ' sm' : ''}"><div class="modal-head"><h2 class="glow-text">${title}</h2><button class="close" aria-label="Kapat">×</button></div><div class="modal-body">${bodyHtml}</div></div>`;
+  w.querySelector('.close').onclick = closeModal; w.addEventListener('click', (e) => { if (e.target === w) closeModal(); });
+  $('modals').appendChild(w); currentModal = w; AUDIO.click(); if (onReady) onReady(w); return w;
+}
+function closeModal() { if (currentModal) { currentModal.remove(); currentModal = null; } }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+/* ================= PIRILTI KATMANI (2D) ================= */
+const FX = (() => {
+  const c = $('fx'), g = c.getContext('2d'); let W = 0, H = 0, stars = [], burst = [];
+  function resize() { W = c.width = innerWidth * Math.min(2, devicePixelRatio); H = c.height = innerHeight * Math.min(2, devicePixelRatio); stars = []; for (let i = 0; i < 34; i++) stars.push({ x: Math.random() * W, y: Math.random() * H, r: .7 + Math.random() * 1.3, p: Math.random() * 6.28, s: .6 + Math.random() * 1.5, c: ['#ffcf4a', '#4ee8ff', '#ffffff', '#ff3fb4'][i % 4] }); }
+  addEventListener('resize', resize); resize();
+  let on = true;
+  function draw(t, ui) {
+    g.clearRect(0, 0, W, H); if (!on) return;
+    if (ui) stars.forEach((s) => { const a = (Math.sin(t * .001 * s.s + s.p) + 1) / 2; g.globalAlpha = a * .55; g.fillStyle = s.c; g.beginPath(); g.moveTo(s.x, s.y - s.r * 3); g.lineTo(s.x + s.r, s.y); g.lineTo(s.x, s.y + s.r * 3); g.lineTo(s.x - s.r, s.y); g.closePath(); g.fill(); });
+    g.globalAlpha = 1;
+    for (let i = burst.length - 1; i >= 0; i--) { const b = burst[i]; b.x += b.vx; b.y += b.vy; b.vy += .15; b.l -= .018; if (b.l <= 0) { burst.splice(i, 1); continue; } g.globalAlpha = b.l; g.fillStyle = b.c; g.beginPath(); g.arc(b.x, b.y, b.r, 0, 6.28); g.fill(); }
+    g.globalAlpha = 1;
+  }
+  function pop(el, colors) { const r = el.getBoundingClientRect(), k = Math.min(2, devicePixelRatio); for (let i = 0; i < 40; i++) { const a = Math.random() * 6.28, v = 2 + Math.random() * 5; burst.push({ x: (r.left + r.width / 2) * k, y: (r.top + r.height / 2) * k, vx: Math.cos(a) * v * k, vy: Math.sin(a) * v * k - 2, r: (1.5 + Math.random() * 2.5) * k, l: 1, c: colors[i % colors.length] }); } }
+  return { draw, pop, set(v) { on = v; } };
+})();
+
+/* ================= 3D ================= */
+const isTouch = matchMedia('(pointer:coarse)').matches;
+const renderer = new THREE.WebGLRenderer({ canvas: $('gl'), antialias: false, powerPreference: 'high-performance' });
+let PR = Math.min(isTouch ? 2 : 2.5, devicePixelRatio || 1); renderer.setPixelRatio(PR); renderer.shadowMap.enabled = true; renderer.shadowMap.type = isTouch ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0; renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(40, 1, .1, 500);
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(isTouch ? innerWidth / 2 : innerWidth, isTouch ? innerHeight / 2 : innerHeight), .3, .45, .88);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const gradePass = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, vig: { value: .32 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: 'uniform sampler2D tDiffuse; uniform float vig; varying vec2 vUv; void main(){ vec4 c = texture2D(tDiffuse, vUv); float d = distance(vUv, vec2(0.5)); c.rgb *= 1.0 - vig * smoothstep(0.35, 0.95, d); float l = dot(c.rgb, vec3(0.299, 0.587, 0.114)); c.rgb = mix(vec3(l), c.rgb, 1.1); c.rgb = (c.rgb - 0.5) * 1.04 + 0.5; gl_FragColor = c; }',
+});
+composer.addPass(gradePass);
+const smaa = new SMAAPass(innerWidth * renderer.getPixelRatio(), innerHeight * renderer.getPixelRatio());
+composer.addPass(smaa); smaa.enabled = PR < 2;
+/* Uyarlanabilir kalite: kare süresi yükselirse çözünürlüğü kademeli düşür, rahatlayınca geri yükselt */
+const QUAL = { ema: 8, t: 0, min: Math.min(isTouch ? 1.25 : 1.5, PR), max: PR };
+function setPR(v) { PR = v; renderer.setPixelRatio(v); composer.setPixelRatio(v); composer.setSize(innerWidth, innerHeight); smaa.enabled = v < 2; }
+function adaptQuality(dtMs, now) { QUAL.ema += (dtMs - QUAL.ema) * .05; if (now - QUAL.t < 2500) return; QUAL.t = now; if (QUAL.ema > 1000 / 55 && PR > QUAL.min) setPR(Math.max(QUAL.min, +(PR - .25).toFixed(2))); else if (QUAL.ema < 1000 / 110 && PR < QUAL.max) setPR(Math.min(QUAL.max, +(PR + .25).toFixed(2))); }
+function resize3d() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize3d); resize3d();
+
+const world = new THREE.Group(); scene.add(world);   // stadyum
+const actors = new THREE.Group(); scene.add(actors); // oyuncular, top
+const fxGroup = new THREE.Group(); scene.add(fxGroup);
+let lights = { spots: [], lamps: [] };
+
+/* Çim: tek parça doku; biçme şeritleri, iki katman gürültü, kenarlara doğru koyulaşma */
+function grassTexture(cols, L, W, neon) {
+  const c = document.createElement('canvas'); c.width = 2048; c.height = 1024; const g = c.getContext('2d');
+  const stripes = Math.round(L / 3);
+  for (let i = 0; i < stripes; i++) { g.fillStyle = cols[i % 2]; g.fillRect(i * c.width / stripes, 0, c.width / stripes + 1, c.height); }
+  // yatay ince şeritler (ikinci biçme yönü)
+  g.globalAlpha = .06; g.fillStyle = '#000'; for (let j = 0; j < 12; j++) if (j % 2) g.fillRect(0, j * c.height / 12, c.width, c.height / 12); g.globalAlpha = 1;
+  const img = g.getImageData(0, 0, c.width, c.height), d = img.data;
+  for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - .5) * (neon ? 10 : 22); d[i] += n; d[i + 1] += n * 1.1; d[i + 2] += n * .6; }
+  g.putImageData(img, 0, 0);
+  // çim demetleri
+  g.globalAlpha = .12; for (let i = 0; i < 24000; i++) { g.fillStyle = i % 2 ? '#0b3b1a' : '#8fd36b'; g.fillRect(Math.random() * c.width, Math.random() * c.height, 2, 5); } g.globalAlpha = 1;
+  // kenar koyulaşması
+  const vg = g.createRadialGradient(c.width / 2, c.height / 2, c.height * .35, c.width / 2, c.height / 2, c.width * .62); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.42)'); g.fillStyle = vg; g.fillRect(0, 0, c.width, c.height);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+function haloTexture(hex) {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); const r = g.createRadialGradient(64, 64, 0, 64, 64, 64); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(.25, hex + 'cc'); r.addColorStop(1, hex + '00'); g.fillStyle = r; g.fillRect(0, 0, 128, 128); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const hex6 = (n) => '#' + n.toString(16).padStart(6, '0');
+
+function buildStadium(id, mode) {
+  while (world.children.length) world.remove(world.children[0]);
+  lights = { spots: [], lamps: [] };
+  const ST = STADIUMS[id] || STADIUMS.night, A = SIM.ARENAS[mode] || SIM.ARENAS['1v1'];
+  const L = A.L, W = A.W, G = A.goalW, GD = A.goalD;
+  scene.background = new THREE.Color(ST.sky); scene.fog = new THREE.Fog(ST.fog, 70, 190);
+  world.add(new THREE.HemisphereLight(0x9bb4ff, 0x1a2a10, ST.neon ? .3 : .42));
+  const key = new THREE.DirectionalLight(ST.light, ST.neon ? .45 : .62); key.position.set(-20, 40, 18); key.castShadow = true; key.shadow.mapSize.set(isTouch ? 1024 : 2048, isTouch ? 1024 : 2048); key.shadow.camera.left = -L / 2 - 8; key.shadow.camera.right = L / 2 + 8; key.shadow.camera.top = W / 2 + 8; key.shadow.camera.bottom = -W / 2 - 8; key.shadow.camera.far = 120; key.shadow.bias = -.0005; key.shadow.radius = 4; world.add(key);
+  const rim = new THREE.DirectionalLight(ST.neon ? 0xff3fb4 : 0x6fa8ff, .3); rim.position.set(25, 20, -30); world.add(rim);
+  // Zemin: asfalt + beton şerit + çim
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshStandardMaterial({ color: ST.coast ? 0x1c6fb0 : 0x0e1119, roughness: 1 })); ground.rotation.x = -Math.PI / 2; ground.position.y = -.08; world.add(ground);
+  const apron = new THREE.Mesh(new THREE.PlaneGeometry(L + 10, W + 10), new THREE.MeshStandardMaterial({ color: ST.coast ? 0xe9d7a3 : 0x262b3a, roughness: .95 })); apron.rotation.x = -Math.PI / 2; apron.position.y = -.02; apron.receiveShadow = true; world.add(apron);
+  const gt = grassTexture(ST.grass, L, W, ST.neon);
+  const field = new THREE.Mesh(new THREE.PlaneGeometry(L + 2.4, W + 2.4), new THREE.MeshStandardMaterial({ map: gt, roughness: .92 }));
+  field.rotation.x = -Math.PI / 2; field.receiveShadow = true; world.add(field);
+  // Çizgiler
+  const lineMat = new THREE.MeshStandardMaterial({ color: ST.line, emissive: ST.line, emissiveIntensity: ST.neon ? .9 : .18, roughness: .7 });
+  const line = (w, h, x, z) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lineMat); m.rotation.x = -Math.PI / 2; m.position.set(x, .015, z); world.add(m); };
+  line(L, .16, 0, W / 2); line(L, .16, 0, -W / 2); line(.16, W, L / 2, 0); line(.16, W, -L / 2, 0); line(.16, W, 0, 0);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(4.4, 4.56, 72), lineMat); ring.rotation.x = -Math.PI / 2; ring.position.y = .015; world.add(ring);
+  const spot = new THREE.Mesh(new THREE.CircleGeometry(.28, 24), lineMat); spot.rotation.x = -Math.PI / 2; spot.position.y = .015; world.add(spot);
+  [1, -1].forEach((s) => { const bw = G + 6, bd = 5; line(.16, bw, s * (L / 2 - bd), 0); line(bd, .16, s * (L / 2 - bd / 2), bw / 2); line(bd, .16, s * (L / 2 - bd / 2), -bw / 2); const arc = new THREE.Mesh(new THREE.RingGeometry(3.2, 3.36, 48, 1, s > 0 ? Math.PI / 2 : -Math.PI / 2, Math.PI), lineMat); arc.rotation.x = -Math.PI / 2; arc.position.set(s * (L / 2 - bd), .015, 0); world.add(arc); });
+  // Duvarlar (cam, ışıklı kenar)
+  const wallMat = new THREE.MeshPhysicalMaterial({ color: 0xcfe6ff, roughness: .06, metalness: .1, transparent: true, opacity: .22, clearcoat: 1, clearcoatRoughness: .1, depthWrite: false });
+  const edgeMat = new THREE.MeshStandardMaterial({ color: ST.wall, emissive: ST.wall, emissiveIntensity: 1.3 });
+  const wall = (w, d, x, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, 1.5, d), wallMat); m.position.set(x, .75, z); world.add(m); const e = new THREE.Mesh(new THREE.BoxGeometry(w + .1, .08, d + .1), edgeMat); e.position.set(x, 1.52, z); world.add(e); const b = new THREE.Mesh(new THREE.BoxGeometry(w + .1, .1, d + .14), new THREE.MeshStandardMaterial({ color: 0x3a4157, metalness: .6, roughness: .4 })); b.position.set(x, .05, z); world.add(b); };
+  wall(L + .4, .2, 0, W / 2 + .1); wall(L + .4, .2, 0, -W / 2 - .1);
+  const sideLen = (W - G) / 2; [1, -1].forEach((s) => { wall(.2, sideLen, s * (L / 2 + .1), (G + sideLen) / 2); wall(.2, sideLen, s * (L / 2 + .1), -(G + sideLen) / 2); });
+  // Kaleler: direkler + ince ağ çizgileri
+  const postMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: .5, roughness: .3, emissive: 0xffffff, emissiveIntensity: .12 });
+  const netMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .32 });
+  [1, -1].forEach((s) => {
+    const gx = s * L / 2; const g = new THREE.Group(); const H = 2.6;
+    [G / 2, -G / 2].forEach((z) => { const p = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, H, 12), postMat); p.position.set(0, H / 2, z); p.castShadow = true; g.add(p); });
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(.13, .13, G + .26, 12), postMat); bar.rotation.x = Math.PI / 2; bar.position.set(0, H, 0); g.add(bar);
+    const pts = []; const step = .45, dx = s * GD;
+    for (let z = -G / 2; z <= G / 2 + .01; z += step) { pts.push(dx, 0, z, dx, H, z); pts.push(0, H, z, dx, H, z); }                     // arka dikey + üst
+    for (let y = 0; y <= H + .01; y += step) { pts.push(dx, y, -G / 2, dx, y, G / 2); pts.push(dx, y, -G / 2, 0, y, -G / 2); pts.push(dx, y, G / 2, 0, y, G / 2); } // arka yatay + yanlar yatay
+    for (let x = 0; Math.abs(x) <= GD + .01; x += dx / 6) { pts.push(x, 0, -G / 2, x, H, -G / 2); pts.push(x, 0, G / 2, x, H, G / 2); pts.push(x, H, -G / 2, x, H, G / 2); } // yan dikey + üst enine
+    const ng = new THREE.BufferGeometry(); ng.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3)); g.add(new THREE.LineSegments(ng, netMat));
+    g.position.x = gx; world.add(g);
+  });
+  // Tribünler: koltuk sıraları, seyirci, çatı ve çatı altı ışık şeridi
+  const standMat = new THREE.MeshStandardMaterial({ color: ST.stand, roughness: .9 });
+  const seatGeo = new THREE.BoxGeometry(.7, .45, .55); const seatMat = new THREE.MeshStandardMaterial({ roughness: .8 });
+  const crowdGeo = new THREE.CapsuleGeometry(.17, .32, 4, 8); const crowdMat = new THREE.MeshStandardMaterial({ roughness: .95 });
+  const seats = [], people = [];
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x151a2a, roughness: .8, metalness: .3, side: THREE.DoubleSide });
+  const stripMat = new THREE.MeshStandardMaterial({ color: ST.wall, emissive: ST.wall, emissiveIntensity: 1.5 });
+  const addStand = (len, x, z, ry, tiers) => {
+    const g = new THREE.Group();
+    for (let t = 0; t < tiers; t++) { const h = 1 + t * .9; const m = new THREE.Mesh(new THREE.BoxGeometry(len, h, 2.4), standMat); m.position.set(0, h / 2, t * 2.4); m.receiveShadow = true; g.add(m);
+      for (let i = 0; i < len / .9; i++) { const sx = -len / 2 + .5 + i * .9; seats.push({ g, x: sx, y: h + .22, z: t * 2.4 + .2, sec: Math.floor(i / 8) }); if (Math.random() < (isTouch ? .55 : .82)) people.push({ g, x: sx, y: h + .62, z: t * 2.4 + .15 }); } }
+    const back = new THREE.Mesh(new THREE.BoxGeometry(len + 1, 1 + tiers * .9 + 3.2, .4), standMat); back.position.set(0, (1 + tiers * .9 + 3.2) / 2, tiers * 2.4 + .2); g.add(back);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(len + 1.5, .25, tiers * 2.4 + 2.5), roofMat); roof.position.set(0, 1 + tiers * .9 + 3.2, tiers * 1.2 - .2); g.add(roof);
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(len, .12, .3), stripMat); strip.position.set(0, 1 + tiers * .9 + 3.05, -.6); g.add(strip);
+    g.position.set(x, 0, z); g.rotation.y = ry; world.add(g); return g;
+  };
+  addStand(L + 6, 0, W / 2 + 4, 0, 5); addStand(L + 6, 0, -W / 2 - 4, Math.PI, 5); addStand(W, L / 2 + GD + 3, 0, Math.PI / 2, 3); const endStand = addStand(W, -L / 2 - GD - 3, 0, -Math.PI / 2, 3);
+  const place = (list, geo, mat, colorFn) => { const im = new THREE.InstancedMesh(geo, mat, list.length); const dummy = new THREE.Object3D(); const col = new THREE.Color(); const gm = new THREE.Matrix4();
+    list.forEach((s, i) => { dummy.position.set(s.x, s.y, s.z); dummy.updateMatrix(); gm.compose(s.g.position, new THREE.Quaternion().setFromEuler(s.g.rotation), new THREE.Vector3(1, 1, 1)); im.setMatrixAt(i, new THREE.Matrix4().multiplyMatrices(gm, dummy.matrix)); colorFn(col, s, i); im.setColorAt(i, col); });
+    im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; im.castShadow = false; world.add(im); return im; };
+  place(seats, seatGeo, seatMat, (col, s) => { col.set(ST.crowd[s.sec % ST.crowd.length]).multiplyScalar(.32); });
+  const crowd = place(people, crowdGeo, crowdMat, (col, s, i) => { col.set(ST.crowd[(i * 7) % ST.crowd.length]).multiplyScalar(.35 + Math.random() * .3); });
+  world.userData.crowd = crowd;
+  // LED ekran (sol kale arkası tribünün üstünde)
+  const sc = document.createElement('canvas'); sc.width = 1024; sc.height = 320; const stex = new THREE.CanvasTexture(sc); stex.colorSpace = THREE.SRGBColorSpace;
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(14, 4.4), new THREE.MeshBasicMaterial({ map: stex, toneMapped: false })); screen.position.set(-L / 2 - GD - 3 - 7.5, 12.2, 0); screen.rotation.y = Math.PI / 2; world.add(screen);
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(.3, 5, 14.6), new THREE.MeshStandardMaterial({ color: 0x0c0f18, metalness: .5, roughness: .5 })); frame.position.set(-L / 2 - GD - 3 - 7.7, 12.2, 0); world.add(frame);
+  world.userData.screen = { c: sc, tex: stex }; drawScreen('NEONKICK', '', '');
+  // Projektör kuleleri: 4 köşe + 2 yan; ampuller + hale
+  const lampMat = new THREE.MeshStandardMaterial({ color: ST.light, emissive: ST.light, emissiveIntensity: 2.6 });
+  const towerMat = new THREE.MeshStandardMaterial({ color: 0x3a3f55, metalness: .7, roughness: .4 });
+  const haloMat = new THREE.SpriteMaterial({ map: haloTexture(hex6(ST.light)), transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false });
+  (isTouch ? [[1, 1], [1, -1], [-1, 1], [-1, -1]] : [[1, 1], [1, -1], [-1, 1], [-1, -1], [0, 1.25], [0, -1.25]]).forEach(([sx, sz]) => {
+    const x = sx * (L / 2 + 10), z = sz * (W / 2 + 13), h = 28;
+    const tower = new THREE.Mesh(new THREE.CylinderGeometry(.28, .6, h, 8), towerMat); tower.position.set(x, h / 2, z); world.add(tower);
+    const head = new THREE.Group(); head.position.set(x, h, z); head.lookAt(0, 0, 0);
+    head.add(new THREE.Mesh(new THREE.BoxGeometry(4.4, 2.2, .3), new THREE.MeshStandardMaterial({ color: 0x20243a, metalness: .6, roughness: .5 })));
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) { const bulb = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .25, 12), lampMat); bulb.rotation.x = Math.PI / 2; bulb.position.set(-1.65 + c * 1.1, -.5 + r * 1, .25); head.add(bulb); }
+    const halo = new THREE.Sprite(haloMat); halo.scale.set(9, 9, 1); halo.position.z = .6; head.add(halo);
+    world.add(head); if (!lights.lampMat) lights.lampMat = lampMat;
+    const sp = new THREE.SpotLight(ST.light, (ST.neon ? 700 : 820) * (isTouch ? 1.4 : 1), 150, .7, .5, 2); sp.position.set(x, h, z); sp.target.position.set(sx * L / 5, 0, sz * W / 5); sp.userData.base = sp.intensity; world.add(sp); world.add(sp.target); lights.spots.push(sp);
+  });
+  // Ortam süsleri
+  if (ST.coast) {
+    for (let i = 0; i < 14; i++) { const a = i / 14 * 6.28, r = L * .95 + 8; const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.18, .3, 7, 6), new THREE.MeshStandardMaterial({ color: 0x7a5230 })); trunk.position.set(Math.cos(a) * r, 3.5, Math.sin(a) * r); trunk.rotation.z = (Math.random() - .5) * .3; world.add(trunk); for (let k = 0; k < 6; k++) { const leaf = new THREE.Mesh(new THREE.ConeGeometry(.5, 4, 4), new THREE.MeshStandardMaterial({ color: 0x2e9a3c })); leaf.position.set(trunk.position.x, 7, trunk.position.z); leaf.rotation.set(1.2, k * 1.05, 0); world.add(leaf); } }
+    const sun = new THREE.DirectionalLight(0xffb070, 1.2); sun.position.set(-40, 18, -60); world.add(sun);
+  }
+  if (ST.neon) {
+    for (let i = 0; i < 28; i++) { const h = 12 + Math.random() * 44, w = 6 + Math.random() * 9; const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), new THREE.MeshStandardMaterial({ color: 0x0a0616, emissive: [0xff3fb4, 0x4ee8ff, 0xc09bff][i % 3], emissiveIntensity: .16 })); const a = i / 28 * 6.28, r = 75 + Math.random() * 30; b.position.set(Math.cos(a) * r, h / 2 - 2, Math.sin(a) * r); world.add(b); }
+    const ringG = new THREE.Mesh(new THREE.TorusGeometry(Math.max(L, W) * .95, .25, 8, 96), new THREE.MeshStandardMaterial({ color: 0xff3fb4, emissive: 0xff3fb4, emissiveIntensity: 1.4 })); ringG.rotation.x = Math.PI / 2; ringG.position.y = 20; world.add(ringG);
+  }
+  if (id === 'night' || id === 'neon') {
+    const N = 1400, pos = new Float32Array(N * 3), ph = new Float32Array(N);
+    for (let i = 0; i < N; i++) { const th = Math.random() * 6.283, c = .12 + Math.random() * .88, s = Math.sqrt(1 - c * c), r = 260 + Math.random() * 30; pos[i * 3] = Math.cos(th) * s * r; pos[i * 3 + 1] = c * r; pos[i * 3 + 2] = Math.sin(th) * s * r; ph[i] = Math.random(); }
+    const sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); sg.setAttribute('ph', new THREE.BufferAttribute(ph, 1));
+    const sm = new THREE.ShaderMaterial({ uniforms: { t: { value: 0 }, px: { value: renderer.getPixelRatio() } }, transparent: true, depthWrite: false,
+      vertexShader: 'attribute float ph; uniform float t; uniform float px; varying float va; void main(){ float b = 0.5 + 0.5 * sin(t * (0.5 + fract(ph * 7.0) * 1.3) + ph * 6.2832); va = 0.25 + 0.75 * b; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = (1.3 + 1.7 * b) * px; gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'varying float va; void main(){ vec2 c = gl_PointCoord - 0.5; float d = length(c); if (d > 0.5) discard; gl_FragColor = vec4(1.0, 1.0, 1.0, va * (1.0 - d * 2.0)); }' });
+    const stars = new THREE.Points(sg, sm); stars.frustumCulled = false; world.add(stars); world.userData.stars = sm;
+  }
+  world.updateMatrixWorld(true);
+}
+function drawScreen(title, left, right) {
+  const s = world.userData.screen; if (!s) return; const g = s.c.getContext('2d'), w = s.c.width, h = s.c.height;
+  const bg = g.createLinearGradient(0, 0, w, 0); bg.addColorStop(0, '#0a1030'); bg.addColorStop(1, '#2a0a30'); g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  g.fillStyle = 'rgba(255,255,255,.04)'; for (let y = 0; y < h; y += 6) g.fillRect(0, y, w, 2);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (left === '') { g.font = '900 150px Orbitron, Rajdhani, sans-serif'; const tg = g.createLinearGradient(0, 60, 0, 260); tg.addColorStop(0, '#fff6cc'); tg.addColorStop(.5, '#ffcf4a'); tg.addColorStop(1, '#ff7a1f'); g.fillStyle = tg; g.shadowColor = '#ffcf4a'; g.shadowBlur = 40; g.fillText(title, w / 2, h / 2); }
+  else { g.font = '700 70px Rajdhani, sans-serif'; g.fillStyle = '#9ff3ff'; g.fillText(left.n, w * .22, h * .35); g.fillStyle = '#ffb3e3'; g.fillText(right.n, w * .78, h * .35); g.font = '900 170px Orbitron, Rajdhani, sans-serif'; g.fillStyle = '#fff'; g.shadowColor = '#fff'; g.shadowBlur = 30; g.fillText(left.s + ' - ' + right.s, w / 2, h * .62); g.font = '700 54px Orbitron, Rajdhani, sans-serif'; g.fillStyle = '#ffcf4a'; g.shadowBlur = 0; g.fillText(title, w / 2, h * .12); }
+  s.tex.needsUpdate = true;
+}
+function flashLights(on) { if (lights.lampMat) lights.lampMat.emissiveIntensity = on ? 7 : 2.6; lights.spots.forEach((s) => { s.intensity = on ? s.userData.base * 2.4 : s.userData.base; }); }
+
+/* Karakter: modüler; krampon ayrı mesh ve parlar; ince siyah kontur */
+const outlineMat = new THREE.MeshBasicMaterial({ color: 0x0a0c14, side: THREE.BackSide });
+function outlined(mesh, k) { const o = new THREE.Mesh(mesh.geometry, outlineMat); o.scale.setScalar(k || 1.08); mesh.add(o); return mesh; }
+function hashStr(s) { let h = 7; for (let i = 0; i < (s || '').length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return h; }
+function jerseyTexture(teamHex, darkHex, num) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = teamHex; g.fillRect(0, 0, 512, 256);
+  g.fillStyle = darkHex; g.fillRect(118, 0, 20, 256); g.fillRect(374, 0, 20, 256);               // yan şeritler
+  g.fillStyle = 'rgba(255,255,255,.9)'; g.fillRect(0, 0, 512, 10);                                 // yaka hattı
+  g.font = '900 150px Orbitron, Rajdhani, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = 'rgba(255,255,255,.95)'; g.fillText(String(num), 256, 118);                        // sırt numarası (u=.5)
+  g.font = '700 34px Rajdhani, sans-serif'; g.fillText('NEONKICK', 256, 30);
+  g.fillStyle = 'rgba(255,255,255,.9)'; g.beginPath(); g.arc(40, 70, 16, 0, 6.28); g.fill();        // göğüs arması (u≈.08)
+  g.fillStyle = teamHex; g.beginPath(); g.arc(40, 70, 9, 0, 6.28); g.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+}
+function makeCharacter(team, bootsId, nameTxt) {
+  const B = SIM.BOOTS[bootsId] || SIM.BOOTS.basic, H = hashStr(nameTxt);
+  const g = new THREE.Group();
+  const teamCol = team === 0 ? 0x23b8ff : 0xff3fb4, teamDark = team === 0 ? 0x0b2f4a : 0x3a0b2f;
+  const skinTone = [0xf1c9a5, 0xe0a984, 0xc68a5c, 0x8d5a3b, 0x5c3a24][H % 5];
+  const jersey = new THREE.MeshStandardMaterial({ map: jerseyTexture(hex6(teamCol), hex6(teamDark), 1 + (H % 30)), roughness: .62 });
+  const skin = new THREE.MeshStandardMaterial({ color: skinTone, roughness: .7 });
+  const shorts = new THREE.MeshStandardMaterial({ color: teamDark, roughness: .75 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .6 });
+  const bootMat = new THREE.MeshStandardMaterial({ color: B.color, emissive: B.glow, emissiveIntensity: .9, metalness: .5, roughness: .3 });
+  // gövde
+  const torso = outlined(new THREE.Mesh(new THREE.CapsuleGeometry(.4, .5, 8, 20), jersey), 1.06); torso.position.y = 1.27; torso.castShadow = true; g.add(torso);
+  [-.42, .42].forEach((x) => { const sh = new THREE.Mesh(new THREE.SphereGeometry(.17, 12, 10), jersey); sh.position.set(x, .3, 0); torso.add(sh); });
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(.12, .14, .22, 12), skin); neck.position.y = 1.72; g.add(neck);
+  const hips = outlined(new THREE.Mesh(new THREE.CylinderGeometry(.42, .36, .36, 16), shorts), 1.06); hips.position.y = .8; g.add(hips);
+  [-1, 1].forEach((s) => { const st = new THREE.Mesh(new THREE.BoxGeometry(.03, .34, .1), white); st.position.set(s * .4, 0, .02); hips.add(st); });
+  // kafa
+  const head = outlined(new THREE.Mesh(new THREE.SphereGeometry(.34, 24, 18), skin), 1.06); head.position.y = 2.1; head.castShadow = true; g.add(head);
+  [-.34, .34].forEach((x) => { const ear = new THREE.Mesh(new THREE.SphereGeometry(.07, 8, 8), skin); ear.position.set(x, 0, 0); head.add(ear); });
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 8), skin); nose.position.set(0, -.04, .33); head.add(nose);
+  const eyeW = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .3 }), pupil = new THREE.MeshStandardMaterial({ color: 0x1a1a22, roughness: .2 }), brow = new THREE.MeshStandardMaterial({ color: 0x22150c });
+  [-.12, .12].forEach((x) => { const w = new THREE.Mesh(new THREE.SphereGeometry(.07, 10, 10), eyeW); w.position.set(x, .05, .29); w.scale.set(1, 1.15, .6); head.add(w); const pu = new THREE.Mesh(new THREE.SphereGeometry(.035, 8, 8), pupil); pu.position.set(x, .05, .335); head.add(pu); const br = new THREE.Mesh(new THREE.BoxGeometry(.13, .025, .03), brow); br.position.set(x, .16, .3); br.rotation.z = x < 0 ? -.15 : .15; head.add(br); });
+  const mouth = new THREE.Mesh(new THREE.TorusGeometry(.06, .014, 6, 12, Math.PI), new THREE.MeshStandardMaterial({ color: 0x7a2a2a })); mouth.position.set(0, -.13, .31); mouth.rotation.z = Math.PI; head.add(mouth);
+  const hairCol = [0x2a1a0e, 0x111111, 0x6b3f1d, 0xd9b36a, 0x8b1a1a][(H >> 3) % 5], hairMat = new THREE.MeshStandardMaterial({ color: hairCol, roughness: .9 });
+  const style = (H >> 6) % 3;
+  if (style === 0) { const h = new THREE.Mesh(new THREE.SphereGeometry(.36, 20, 12, 0, 6.3, 0, 1.35), hairMat); h.position.y = .03; head.add(h); }
+  else if (style === 1) { for (let i = 0; i < 7; i++) { const sp = new THREE.Mesh(new THREE.ConeGeometry(.09, .3, 6), hairMat); const a = i / 7 * Math.PI - Math.PI / 2 + .2; sp.position.set(Math.sin(a) * .22, .3 + Math.cos(a) * .12, Math.cos(a) * .18 - .05); sp.rotation.set(-.4 + Math.cos(a) * .3, 0, -Math.sin(a) * .8); head.add(sp); } const base = new THREE.Mesh(new THREE.SphereGeometry(.355, 16, 10, 0, 6.3, 0, 1.1), hairMat); base.position.y = .04; head.add(base); }
+  else { const h = new THREE.Mesh(new THREE.SphereGeometry(.365, 20, 12, 0, 6.3, 0, 1.5), hairMat); h.position.set(.04, .02, -.03); h.rotation.z = -.25; head.add(h); }
+  // kollar: üst kol forma, alt kol ten, el
+  const limbs = {};
+  [['armL', -.56], ['armR', .56]].forEach(([k, x]) => { const p = new THREE.Group(); p.position.set(x, 1.6, 0); const up = new THREE.Mesh(new THREE.CapsuleGeometry(.12, .28, 4, 10), jersey); up.position.y = -.18; p.add(up); const lo = outlined(new THREE.Mesh(new THREE.CapsuleGeometry(.1, .3, 4, 10), skin), 1.12); lo.position.y = -.5; p.add(lo); const hand = new THREE.Mesh(new THREE.SphereGeometry(.11, 10, 8), skin); hand.position.y = -.72; p.add(hand); g.add(p); limbs[k] = p; });
+  // bacaklar: ten, çorap, krampon
+  [['legL', -.2], ['legR', .2]].forEach(([k, x]) => { const p = new THREE.Group(); p.position.set(x, .72, 0); const th = outlined(new THREE.Mesh(new THREE.CapsuleGeometry(.15, .3, 4, 10), skin), 1.1); th.position.y = -.2; p.add(th); const sock = new THREE.Mesh(new THREE.CylinderGeometry(.14, .13, .3, 12), jersey); sock.position.y = -.5; p.add(sock); const sockTop = new THREE.Mesh(new THREE.CylinderGeometry(.145, .145, .06, 12), white); sockTop.position.y = -.37; p.add(sockTop);
+    const boot = outlined(new THREE.Mesh(new THREE.BoxGeometry(.3, .18, .5), bootMat), 1.08); boot.position.set(0, -.68, .08); boot.castShadow = true; p.add(boot);
+    const toe = new THREE.Mesh(new THREE.SphereGeometry(.15, 10, 8), bootMat); toe.position.set(0, -.68, .3); toe.scale.set(1, .6, 1); p.add(toe);
+    const heel = new THREE.Mesh(new THREE.SphereGeometry(.13, 10, 8), bootMat); heel.position.set(0, -.66, -.14); heel.scale.set(1, .7, .8); p.add(heel);
+    const studs = new THREE.Mesh(new THREE.BoxGeometry(.26, .04, .44), new THREE.MeshStandardMaterial({ color: 0x222222 })); studs.position.set(0, -.78, .08); p.add(studs);
+    g.add(p); limbs[k] = p; });
+  const ringMat = new THREE.MeshBasicMaterial({ color: teamCol, transparent: true, opacity: .55 });
+  const ring = new THREE.Mesh(new THREE.RingGeometry(.75, .95, 32), ringMat); ring.rotation.x = -Math.PI / 2; ring.position.y = .03; g.add(ring);
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64; const ctx2 = c.getContext('2d'); ctx2.font = '700 34px Rajdhani, sans-serif'; ctx2.textAlign = 'center'; ctx2.fillStyle = 'rgba(0,0,0,.5)'; ctx2.fillRect(0, 10, 256, 44); ctx2.fillStyle = team === 0 ? '#9ff3ff' : '#ffb3e3'; ctx2.fillText(nameTxt || '', 128, 44);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false })); tag.scale.set(3.2, .8, 1); tag.position.y = 3.0; g.add(tag);
+  const marker = new THREE.Mesh(new THREE.ConeGeometry(.3, .55, 4), new THREE.MeshBasicMaterial({ color: teamCol, depthTest: false, transparent: true, opacity: .95 }));
+  marker.rotation.x = Math.PI; marker.position.y = 3.75; marker.renderOrder = 999; marker.visible = false; g.add(marker);
+  g.userData = { limbs, torso, head, ring, bootMat, B, marker, tag };
+  return g;
+}
+function animateCharacter(g, anim, speed, dt, t, extra) {
+  const u = g.userData, run = Math.min(1, speed / 6); const sw = Math.sin(anim * 2.4) * (0.3 + run * .75);
+  u.limbs.legL.rotation.x = sw; u.limbs.legR.rotation.x = -sw; u.limbs.armL.rotation.x = -sw * .9; u.limbs.armR.rotation.x = sw * .9;
+  u.limbs.armL.rotation.z = .18 + run * .1; u.limbs.armR.rotation.z = -.18 - run * .1;
+  u.torso.position.y = 1.27 + Math.abs(Math.sin(anim * 2.4)) * .06 * run + Math.sin(t * 2) * .012;
+  u.torso.rotation.x = run * .14; u.head.position.y = 2.1 + Math.sin(t * 2) * .012;
+  if (extra && extra.idle) { u.head.rotation.y = Math.sin(t * .7) * .35; }
+  u.bootMat.emissiveIntensity = .7 + Math.sin(t * 5) * .3 + run * .5;
+}
+function makeBall() {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d'); g.fillStyle = '#f4f4f4'; g.fillRect(0, 0, 512, 256);
+  const pent = (x, y, r, rot) => { g.beginPath(); for (let i = 0; i < 5; i++) { const a = rot + i * Math.PI * 2 / 5; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); g.fill(); };
+  g.fillStyle = '#161616'; for (let r = 0; r < 3; r++) for (let i = 0; i < 6; i++) pent(i * 85 + (r % 2 ? 42 : 0), 50 + r * 80, 24, r % 2 ? .3 : -.3);
+  g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 2; for (let i = 0; i < 20; i++) { g.beginPath(); g.moveTo(Math.random() * 512, Math.random() * 256); g.lineTo(Math.random() * 512, Math.random() * 256); g.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = outlined(new THREE.Mesh(new THREE.SphereGeometry(SIM.BR, 28, 20), new THREE.MeshStandardMaterial({ map: t, roughness: .35, metalness: .05 })), 1.1); m.castShadow = true; return m;
+}
+function makeShadowBlob() { const m = new THREE.Mesh(new THREE.CircleGeometry(SIM.BR, 20), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: .35 })); m.rotation.x = -Math.PI / 2; m.position.y = .025; return m; }
+
+/* Parçacık sistemi (gol efektleri, şut izleri) */
+const particles = [];
+function spawnParticles(cfg, x, z, y0) {
+  const n = cfg.n, pos = new Float32Array(n * 3), col = new Float32Array(n * 3), vel = [], c = new THREE.Color();
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({ size: cfg.size, vertexColors: true, transparent: true, opacity: 1, sizeAttenuation: true, blending: THREE.AdditiveBlending, depthWrite: false });
+  const pts = new THREE.Points(geo, mat); fxGroup.add(pts);
+  for (let i = 0; i < n; i++) {
+    c.set(cfg.colors[i % cfg.colors.length]); col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    let px = x, py = y0 || .5, pz = z, vx, vy, vz;
+    if (cfg.rain) { px = (Math.random() - .5) * 40; pz = (Math.random() - .5) * 26; py = 14 + Math.random() * 10; vx = 0; vy = -2; vz = 0; }
+    else if (cfg.shape === 'ring') { const a = Math.random() * 6.28; vx = Math.cos(a) * cfg.speed; vz = Math.sin(a) * cfg.speed; vy = Math.floor(i / (n / 4)) * 1.5; }
+    else if (cfg.swirl) { const a = Math.random() * 6.28, r = 2 + Math.random() * 8; px += Math.cos(a) * r; pz += Math.sin(a) * r; py = 1 + Math.random() * 8; vx = -Math.sin(a) * cfg.speed; vz = Math.cos(a) * cfg.speed; vy = .5; }
+    else if (cfg.shape === 'dot' && cfg.grav === 0 && !cfg.swirl && cfg.name === 'Yıldırım') { px += (Math.random() - .5) * 1.5; py = 2 + Math.random() * 16; pz += (Math.random() - .5) * 1.5; vx = (Math.random() - .5) * cfg.speed; vy = -Math.random() * 8; vz = (Math.random() - .5) * cfg.speed; }
+    else { const a = Math.random() * 6.28, b = Math.random() * Math.PI, v = cfg.speed * (.4 + Math.random() * .8); vx = Math.cos(a) * Math.sin(b) * v; vz = Math.sin(a) * Math.sin(b) * v; vy = Math.abs(Math.cos(b)) * v * (cfg.grav < 0 ? 1.4 : 1) + 2; }
+    pos[i * 3] = px; pos[i * 3 + 1] = py; pos[i * 3 + 2] = pz; vel.push(vx, vy, vz);
+  }
+  particles.push({ pts, vel, life: cfg.life, max: cfg.life, grav: cfg.grav, swirl: cfg.swirl });
+}
+function kickTrail(x, z, dirx, dirz, colorHex, big) {
+  spawnParticles({ n: big ? 90 : 40, colors: [colorHex, '#ffffff'], speed: big ? 7 : 4, grav: 2, size: big ? .2 : .13, life: .6 }, x, z, .5);
+}
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i]; p.life -= dt; if (p.life <= 0) { fxGroup.remove(p.pts); p.pts.geometry.dispose(); p.pts.material.dispose(); particles.splice(i, 1); continue; }
+    const a = p.pts.geometry.attributes.position.array;
+    for (let k = 0; k < p.vel.length; k += 3) {
+      p.vel[k + 1] -= p.grav * dt;
+      if (p.swirl) { const x = a[k], z = a[k + 2]; p.vel[k] += -x * dt * 2; p.vel[k + 2] += -z * dt * 2; }
+      a[k] += p.vel[k] * dt; a[k + 1] += p.vel[k + 1] * dt; a[k + 2] += p.vel[k + 2] * dt;
+      if (a[k + 1] < .05) { a[k + 1] = .05; p.vel[k + 1] *= -.4; p.vel[k] *= .8; p.vel[k + 2] *= .8; }
+    }
+    p.pts.geometry.attributes.position.needsUpdate = true; p.pts.material.opacity = Math.min(1, p.life / p.max * 2);
+  }
+}
+
+/* ================= MÜZİK (sentez sequencer v4: synthwave) ================= */
+const MUSIC = (() => {
+  let ctx = null, master = null, cur = null, timer = null, nb = null, ir = null;
+  const NOTE = (n) => 440 * Math.pow(2, (n - 69) / 12);
+  const N = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+  const midi = (s) => { const m = /^([A-G])(#?)(\d)$/.exec(s); return 12 * (+m[3] + 1) + N[m[1]] + (m[2] ? 1 : 0); };
+  // Melodi notasyonu: "nota:16lık süre" boşlukla, "-:n" sus
+  const seq = (str) => { const out = {}; let pos = 0; str.split(/\s+/).forEach((tok) => { const [n, d] = tok.split(':'); const len = +d; if (n !== '-') out[pos] = [midi(n), len]; pos += len; }); return out; };
+  function chord(root, type) { const r = midi(root); return type === 'm' ? [r, r + 3, r + 7, r + 12] : type === 'sus' ? [r, r + 5, r + 7, r + 12] : [r, r + 4, r + 7, r + 12]; }
+
+  // ---------- Maç: 132 BPM, Am | F | C | G  /  Am | F | G | E ----------
+  const MATCH = {
+    bpm: 132,
+    bars: [['A2', 'm'], ['F2', ''], ['C3', ''], ['G2', ''], ['A2', 'm'], ['F2', ''], ['G2', ''], ['E2', '']],
+    hookA: [seq('E5:2 E5:1 G5:1 A5:4 G5:2 E5:2 D5:4'), seq('C5:2 C5:1 D5:1 E5:4 D5:2 C5:2 A4:4'), seq('E5:2 E5:1 G5:1 A5:4 B5:2 A5:2 G5:4'), seq('A5:2 G5:2 E5:4 D5:2 E5:2 -:4'),
+            seq('E5:2 E5:1 G5:1 A5:4 G5:2 E5:2 D5:4'), seq('C5:2 C5:1 D5:1 E5:4 D5:2 C5:2 A4:4'), seq('B4:2 D5:2 G5:4 F5:2 D5:2 B4:4'), seq('G#4:2 B4:2 E5:6 -:2 E5:2 -:2')],
+    hookB: [seq('A5:1 -:1 A5:1 -:1 G5:2 E5:2 A5:4 G5:2 E5:2'), seq('F5:2 E5:2 F5:4 A5:2 C6:2 A5:4'), seq('G5:1 -:1 G5:1 -:1 E5:2 C5:2 G5:4 E5:4'), seq('D5:2 E5:2 G5:4 B5:2 D6:2 B5:4'),
+            seq('A5:1 -:1 A5:1 -:1 G5:2 E5:2 A5:4 G5:2 E5:2'), seq('F5:2 E5:2 F5:4 A5:2 C6:2 A5:4'), seq('G5:2 F5:2 D5:4 B4:2 D5:2 G5:4'), seq('G#5:4 E5:4 B4:4 E5:4')],
+  };
+  // ---------- Lobi: 86 BPM, Am | F | C | G ----------
+  const LOBBY = {
+    bpm: 86,
+    bars: [['A2', 'm'], ['F2', ''], ['C3', ''], ['G2', '']],
+    mel: [seq('E5:4 -:2 G5:2 A5:4 G5:4'), seq('-:4 F5:2 E5:2 C5:8'), seq('-:16'), seq('D5:4 E5:2 G5:2 E5:8')],
+  };
+
+  function noise(sec) { const b = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * sec), ctx.sampleRate); const d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; }
+  function impulse(sec, decay) { const n = Math.ceil(ctx.sampleRate * sec), b = ctx.createBuffer(2, n, ctx.sampleRate); for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, decay); } return b; }
+  function env(g, t, a, hold, rel, peak) { g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.setValueAtTime(peak, t + a + hold); g.gain.exponentialRampToValueAtTime(.0004, t + a + hold + rel); }
+  // --- davullar ---
+  function kick(t, g) { const o = ctx.createOscillator(), e = ctx.createGain(); o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(42, t + .11); env(e, t, .001, .03, .32, g); o.connect(e); e.connect(cur.dry); o.start(t); o.stop(t + .4); const n = ctx.createBufferSource(); n.buffer = nb; const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 2500; const ne = ctx.createGain(); env(ne, t, .001, 0, .03, g * .4); n.connect(f); f.connect(ne); ne.connect(cur.dry); n.start(t); n.stop(t + .05); if (cur.duckG) { cur.duckG.gain.cancelScheduledValues(t); cur.duckG.gain.setValueAtTime(.25, t); cur.duckG.gain.linearRampToValueAtTime(1, t + .28); } }
+  function snare(t, g) { const n = ctx.createBufferSource(); n.buffer = nb; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2400; f.Q.value = .7; const e = ctx.createGain(); env(e, t, .001, .01, .2, g); n.connect(f); f.connect(e); e.connect(cur.dry); e.connect(cur.rev); n.start(t); n.stop(t + .3); const o = ctx.createOscillator(), oe = ctx.createGain(); o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(150, t + .06); env(oe, t, .001, 0, .1, g * .9); o.connect(oe); oe.connect(cur.dry); o.start(t); o.stop(t + .12); }
+  function clap(t, g) { [0, .012, .024].forEach((d, i) => { const n = ctx.createBufferSource(); n.buffer = nb; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1700; f.Q.value = 1; const e = ctx.createGain(); env(e, t + d, .001, 0, i === 2 ? .18 : .02, g); n.connect(f); f.connect(e); e.connect(cur.dry); if (i === 2) e.connect(cur.rev); n.start(t + d); n.stop(t + d + .25); }); }
+  function hat(t, g, open) { const n = ctx.createBufferSource(); n.buffer = nb; const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 8000; const e = ctx.createGain(); env(e, t, .001, 0, open ? .25 : .035, g); n.connect(f); f.connect(e); e.connect(cur.dry); n.start(t); n.stop(t + .3); }
+  // --- enstrümanlar ---
+  function supersaw(t, m, dur, g, cutoff, dest, voices) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(cutoff, t); f.frequency.exponentialRampToValueAtTime(Math.max(200, cutoff * .25), t + dur); const e = ctx.createGain(); env(e, t, .01, dur * .5, dur * .5, g); (voices || [-12, -5, 0, 5, 12]).forEach((det) => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = NOTE(m); o.detune.value = det; o.connect(f); o.start(t); o.stop(t + dur + .05); }); f.connect(e); dest.forEach((d) => e.connect(d)); }
+  function bass(t, m, dur, g) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 4; f.frequency.setValueAtTime(900, t); f.frequency.exponentialRampToValueAtTime(140, t + dur); const e = ctx.createGain(); env(e, t, .004, dur * .45, dur * .5, g); const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = NOTE(m); const s = ctx.createOscillator(); s.frequency.value = NOTE(m - 12); const sg = ctx.createGain(); sg.gain.value = 1.3; o.connect(f); s.connect(sg); sg.connect(f); f.connect(e); e.connect(cur.dry); o.start(t); s.start(t); o.stop(t + dur + .05); s.stop(t + dur + .05); }
+  function pluck(t, m, dur, g) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(5000, t); f.frequency.exponentialRampToValueAtTime(700, t + dur); const e = ctx.createGain(); env(e, t, .003, .02, dur, g); const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = NOTE(m); const o2 = ctx.createOscillator(); o2.type = 'triangle'; o2.frequency.value = NOTE(m); o2.detune.value = 6; o.connect(f); o2.connect(f); f.connect(e); e.connect(cur.dry); e.connect(cur.delay); e.connect(cur.rev); o.start(t); o2.start(t); o.stop(t + dur + .05); o2.stop(t + dur + .05); }
+  function lead(t, m, dur, g) { const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 1.4; f.frequency.setValueAtTime(3200, t); f.frequency.exponentialRampToValueAtTime(1100, t + dur); const e = ctx.createGain(); env(e, t, .012, dur * .6, dur * .4, g); const lfo = ctx.createOscillator(); lfo.frequency.value = 5.2; const lg = ctx.createGain(); lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(7, t + .2); lfo.connect(lg); [-8, 8].forEach((det) => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = NOTE(m); o.detune.value = det; lg.connect(o.detune); o.connect(f); o.start(t); o.stop(t + dur + .05); }); const sq = ctx.createOscillator(); sq.type = 'square'; sq.frequency.value = NOTE(m - 12); const sg = ctx.createGain(); sg.gain.value = .25; sq.connect(sg); sg.connect(f); sq.start(t); sq.stop(t + dur + .05); lfo.start(t); lfo.stop(t + dur + .05); f.connect(e); e.connect(cur.dry); e.connect(cur.delay); e.connect(cur.rev); }
+  function pad(t, notes, dur, g) { notes.forEach((m) => { [-7, 7].forEach((det) => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = NOTE(m); o.detune.value = det; const e = ctx.createGain(); e.gain.setValueAtTime(0, t); e.gain.linearRampToValueAtTime(g, t + .9); e.gain.setValueAtTime(g, t + dur - 1); e.gain.linearRampToValueAtTime(0, t + dur); o.connect(e); e.connect(cur.pad); o.start(t); o.stop(t + dur + .05); }); }); }
+  function epiano(t, m, dur, g) { const car = ctx.createOscillator(); car.frequency.value = NOTE(m); const mod = ctx.createOscillator(); mod.frequency.value = NOTE(m) * 2; const mg = ctx.createGain(); mg.gain.setValueAtTime(NOTE(m) * 1.4, t); mg.gain.exponentialRampToValueAtTime(NOTE(m) * .12, t + .4); mod.connect(mg); mg.connect(car.frequency); const e = ctx.createGain(); env(e, t, .004, .03, dur, g); car.connect(e); e.connect(cur.dry); e.connect(cur.rev); e.connect(cur.delay); car.start(t); mod.start(t); car.stop(t + dur + .1); mod.stop(t + dur + .1); }
+
+  function stepMatch(s, t, st) {
+    const bar = Math.floor(s / 16), pos = s % 16, i8 = bar % 8, [root, ty] = MATCH.bars[i8], ch = chord(root, ty), sec = Math.floor(bar / 8) % 4; // 0 giriş, 1 kanca A, 2 köprü, 3 kanca B
+    const full = sec !== 0 || bar % 8 >= 4;
+    // davul
+    if (pos % 4 === 0) kick(t, .95); if (pos === 10 && bar % 2 === 1 && full) kick(t, .5);
+    if (full && (pos === 4 || pos === 12)) { snare(t, .4); clap(t, .3); }
+    if (pos % 2 === 0) hat(t, pos % 4 === 2 ? .12 : .06, false); if (pos === 14 && bar % 2 === 1) hat(t, .08, true);
+    if (i8 === 7 && pos >= 12 && pos % 2 === 0) snare(t, .25);
+    // bas: sekizlik sürüş, 7. sekizlikte oktav
+    bass(t, midi(root) + (pos % 8 === 7 ? 12 : 0) - 12, st * .92, full ? .5 : .38);
+    // pad + sidechain
+    if (pos === 0) pad(t, ch.slice(0, 3).map((m) => m + 12), st * 16.5, sec === 2 ? .07 : .045);
+    // akor stab'ları (giriş ve köprüde daha seyrek)
+    const stabs = sec === 2 ? [0, 6] : [0, 3, 6, 10, 11];
+    if (stabs.includes(pos)) ch.forEach((m, k) => supersaw(t + k * .004, m + 12, st * (pos === 0 ? 2.4 : 1.3), .05, sec === 2 ? 1800 : 3000, [cur.dry, cur.rev]));
+    // arpej (köprü)
+    if (sec === 2 && pos % 2 === 0) pluck(t, ch[(pos / 2) % 4] + 24, st * 1.7, .05);
+    // kanca
+    if (sec === 1 || sec === 3) { const m = (sec === 1 ? MATCH.hookA : MATCH.hookB)[i8][pos]; if (m) lead(t, m[0], st * m[1] * .92, .12); }
+    if (sec === 0 && bar % 8 >= 4) { const m = MATCH.hookA[i8][pos]; if (m && pos % 4 === 0) epiano(t, m[0], st * m[1], .05); }
+  }
+  function stepLobby(s, t, st) {
+    const bar = Math.floor(s / 16), pos = s % 16, [root, ty] = LOBBY.bars[bar % 4], ch = chord(root, ty);
+    if (pos === 0) pad(t, ch.map((m) => m + 12), st * 16.5, .04);
+    if (pos === 0 || pos === 10) kick(t, .32); if (pos === 8) clap(t, .12);
+    if (pos % 4 === 2) hat(t, .035, false);
+    if (pos === 0 || pos === 8) bass(t, midi(root) - 12, st * 7, .26);
+    if (pos % 2 === 0) pluck(t, ch[[0, 2, 1, 3, 2, 0, 3, 1][(pos / 2) | 0]] + 24, st * 2.2, .04);
+    if (pos === 0 || pos === 6 || pos === 10) ch.slice(0, 3).forEach((m, k) => epiano(t + k * .02, m + 12, st * 5, .035));
+    if (bar % 8 >= 4) { const m = LOBBY.mel[bar % 4][pos]; if (m) lead(t, m[0] - 12, st * m[1] * 1.1, .045); }
+  }
+  function schedule() { if (!cur) return; while (cur.next < ctx.currentTime + .16) { cur.fn(cur.step, cur.next, cur.st); cur.next += cur.st; cur.step++; } }
+  return {
+    start(kind) {
+      ctx = AUDIO.ctx(); master = AUDIO.master(); if (!ctx || !master) return;
+      if (cur && cur.kind === kind) return;
+      if (!nb) { nb = noise(.6); ir = impulse(2.4, 3); }
+      this.stop();
+      const bpm = kind === 'match' ? MATCH.bpm : LOBBY.bpm;
+      const out = ctx.createGain(); out.gain.value = 0; out.connect(master);
+      const dry = ctx.createGain(); dry.connect(out);
+      const rev = ctx.createGain(); rev.gain.value = kind === 'match' ? .2 : .36; const conv = ctx.createConvolver(); conv.buffer = ir; rev.connect(conv); conv.connect(out);
+      const duckG = ctx.createGain(); const pd = ctx.createGain(); const pf = ctx.createBiquadFilter(); pf.type = 'lowpass'; pf.frequency.value = kind === 'match' ? 1600 : 1100; pd.connect(pf); pf.connect(duckG); duckG.connect(out); duckG.connect(conv);
+      const delay = ctx.createDelay(1.5); delay.delayTime.value = 60 / bpm * .75; const fb = ctx.createGain(); fb.gain.value = .32; const wet = ctx.createGain(); wet.gain.value = .28; const df = ctx.createBiquadFilter(); df.type = 'lowpass'; df.frequency.value = 2600;
+      delay.connect(df); df.connect(fb); fb.connect(delay); df.connect(wet); wet.connect(out); wet.connect(conv);
+      cur = { kind, out, dry, rev, pad: pd, duckG: kind === 'match' ? duckG : null, delay, st: 60 / bpm / 4, next: ctx.currentTime + .1, step: 0, fn: kind === 'match' ? stepMatch : stepLobby, level: kind === 'match' ? .34 : .38 };
+      out.gain.linearRampToValueAtTime(cur.level, ctx.currentTime + 1.5);
+      if (ctx.length) { const total = ctx.length / ctx.sampleRate; while (cur.next < total) { cur.fn(cur.step, cur.next, cur.st); cur.next += cur.st; cur.step++; } return; } // çevrimdışı render
+      if (!timer) timer = setInterval(schedule, 40);
+    },
+    stop() { if (!cur) return; const o = cur.out, t = ctx.currentTime; o.gain.cancelScheduledValues(t); o.gain.setValueAtTime(o.gain.value, t); o.gain.linearRampToValueAtTime(0, t + .9); setTimeout(() => { try { o.disconnect(); } catch (e) {} }, 1100); cur = null; },
+    duck(on) { if (!cur) return; const t = ctx.currentTime; cur.out.gain.cancelScheduledValues(t); cur.out.gain.setValueAtTime(cur.out.gain.value, t); cur.out.gain.linearRampToValueAtTime(on ? .14 : cur.level, t + .4); },
+    // kısa sonuç müzikleri
+    sting(kind) {
+      ctx = AUDIO.ctx(); master = AUDIO.master(); if (!ctx) return; if (!nb) { nb = noise(.6); ir = impulse(2.4, 3); }
+      const was = cur; const out = ctx.createGain(); out.gain.value = .45; out.connect(master); const conv = ctx.createConvolver(); conv.buffer = ir; const rev = ctx.createGain(); rev.gain.value = .4; rev.connect(conv); conv.connect(out);
+      const tmp = { dry: out, rev, delay: ctx.createGain(), pad: out }; const saved = cur; cur = tmp; const t = ctx.currentTime + .05, st = 60 / 120 / 4;
+      if (kind === 'win') { [[0, 'A4'], [2, 'C5'], [4, 'E5'], [6, 'A5'], [10, 'G5'], [12, 'A5']].forEach(([p, n]) => supersaw(t + p * st, midi(n), st * (p >= 10 ? 8 : 3), .11, 3600, [out, rev])); [0, 4, 8, 12].forEach((p) => kick(t + p * st, .7)); clap(t + 4 * st, .3); clap(t + 12 * st, .35); chord('A3', 'm').forEach((m) => supersaw(t + 12 * st, m + 12, st * 10, .05, 2400, [out, rev])); }
+      else { [[0, 'E5'], [3, 'D5'], [6, 'B4'], [10, 'A4']].forEach(([p, n]) => epiano(t + p * st, midi(n), st * 5, .1)); chord('A2', 'm').forEach((m) => supersaw(t + 10 * st, m + 12, st * 10, .04, 1200, [out, rev])); }
+      cur = saved;
+    },
+  };
+})();
+
+/* ================= DİL ================= */
+const I18N_EN = {
+  // açılış
+  '3D ARENA FUTBOLU': '3D ARENA FOOTBALL', 'Oyna': 'Play', 'Ayarlar': 'Settings', 'Takma adını seç (bir kez, kalıcı)': 'Pick your nickname (once, permanent)', 'ör. KaleciKral': 'e.g. GoalKing', 'Arenaya Gir': 'Enter the Arena',
+  'Takma adlar sunucuda kayıt altına alınır; alınmış bir ad tekrar alınamaz.': 'Nicknames are registered on the server; a taken name cannot be claimed again.',
+  'Çevrimdışı mod: takma ad bu cihazda saklanır. Sunucuya bağlanınca kayıt doğrulanır.': 'Offline mode: your nickname is stored on this device and verified once you connect to a server.',
+  'Takma ad 3-16 karakter: harf, rakam ve _': 'Nickname must be 3-16 characters: letters, digits and _', 'Takma ad reddedildi.': 'Nickname rejected.', 'Hoş geldin, ': 'Welcome back, ',
+  'Bu takma ad alınmış. Başka bir tane dene.': 'That nickname is taken. Try another.', 'Takma ad 3-16 karakter olmalı; sadece harf, rakam ve _ kullan.': 'Nickname must be 3-16 characters; letters, digits and _ only.', 'Bu hesap şu an başka bir cihazda açık.': 'This account is open on another device.',
+  // lobi
+  'Mağaza': 'Shop', 'Battle Pass': 'Battle Pass', 'Yetenekler': 'Skills', 'Arkadaşlar': 'Friends', 'Günlük': 'Daily', 'Maç Bul': 'Find Match', 'Çevrimdışı': 'Offline',
+  'Dereceli 1v1': 'Ranked 1v1', 'Rank puanı kazan': 'Earn rank points', 'Dereceli 2v2': 'Ranked 2v2', 'Takım halinde': 'Play as a team', 'Bota Karşı 1v1': 'Vs Bot 1v1', 'Antrenman, XP verir': 'Practice, gives XP', 'Bota Karşı 2v2': 'Vs Bot 2v2', 'Bot takım arkadaşı': 'Bot teammate', 'Özel Maç': 'Custom Match', 'Kod ile arkadaş davet': 'Invite friends by code',
+  'Önceki mod': 'Previous mode', 'Sonraki mod': 'Next mode', 'Stadyum': 'Stadium', 'REKLAM ALANI · 320×50': 'AD SPACE · 320×50', 'İzle +40 ': 'Watch +40 ', 'İzle +40': 'Watch +40', 'Yetenek yok': 'No skill', '5. seviyede açılır': 'Unlocks at level 5', '5. seviyede ilk yetenek açılır': 'First skill unlocks at level 5',
+  'Çevrimiçi · {n} oyuncu': 'Online · {n} players', 'Çevrimdışı · yalnızca bot': 'Offline · bots only', 'Sırada… ({m}) Rakip aranıyor': 'In queue… ({m}) Searching for opponent', 'Sıraya girildi…': 'Queued…', 'Dereceli maç için sunucuya bağlan (Ayarlar).': 'Connect to a server for ranked matches (Settings).',
+  'Güç {p} · Hız {s} · Kontrol {c}': 'Power {p} · Speed {s} · Control {c}', 'Lv ': 'Lv ', ' RP': ' RP',
+  // HUD
+  'Sen': 'You', 'Rakip': 'Opponent', 'Dayanıklılık': 'Stamina', 'Ayrıl': 'Leave', '💬 Sohbet': '💬 Chat', 'ŞUT': 'SHOOT', 'YET.': 'SKILL', 'KOŞ': 'RUN', 'BAŞLA': 'GO', 'GOOOL': 'GOOOAL', 'KENDİ KALESİNE': 'OWN GOAL', 'UZATMA · Altın gol kazanır': 'OVERTIME · Golden goal wins',
+  'Tuşları sürükle': 'Drag the buttons', 'Kaydet': 'Save', 'Sıfırla': 'Reset', 'Bot': 'Bot',
+  'İyi oyun!': 'Good game!', 'Ne gol!': 'What a goal!', 'Pas ver!': 'Pass!', 'Savun!': 'Defend!', 'Yetişiyorum!': 'On my way!', 'Tebrikler!': 'Congrats!', 'Şanslı…': 'Lucky…', 'Tekrar?': 'Rematch?',
+  'Maçtan ayrıl': 'Leave match', 'Ayrılmak istediğinden emin misin?': 'Are you sure you want to leave?', 'Dereceli maçtan ayrılırsan -20 RP cezası alırsın ve maç kaybedilmiş sayılır.': 'Leaving a ranked match costs -20 RP and counts as a loss.', 'Evet, ayrıl': 'Yes, leave', 'Vazgeç': 'Cancel',
+  // sonuç
+  'GALİBİYET': 'VICTORY', 'MAĞLUBİYET': 'DEFEAT', 'BERABERLİK': 'DRAW', 'SEVİYE ATLADIN!': 'LEVEL UP!', 'Tekrar Oyna': 'Play Again', 'Lobiye Dön': 'Back to Lobby', 'XP': 'XP', 'Altın': 'Gold', 'Pass XP': 'Pass XP', 'Rank puanı': 'Rank points', 'Gol': 'Goals', 'Seviye {l}': 'Level {l}',
+  // mağaza
+  'Kramponlar': 'Boots', 'Gol Efektleri': 'Goal Effects', 'Stadyumlar': 'Stadiums', 'Altın Paketleri': 'Gold Packs', 'Reklam izle +40': 'Watch ad +40',
+  'Krampon; güç (şut hızı), hız ve kontrol verir. Şut izi kramponun rengini alır.': 'Boots give power (shot speed), speed and control. Your shot trail takes the boot colour.',
+  'Gol attığında sahada oynayan kutlama efekti.': 'The celebration effect that plays when you score.', 'Lobide ve bot maçlarında kullanılan stadyum. Online maçlarda rastgele seçilir.': 'Stadium used in the lobby and bot matches. Online matches pick one at random.',
+  'Gerçek parayla altın. Ödeme sağlayıcısı bağlanana kadar satın almalar test modundadır.': 'Gold for real money. Purchases run in test mode until a payment provider is connected.',
+  'Güç': 'Power', 'Hız': 'Speed', 'Kontrol': 'Control', 'SENDE': 'OWNED', 'Kullanılıyor': 'Equipped', 'Kuşan': 'Equip', '{n} altın daha lazım. Maç oyna ya da reklam izle.': 'You need {n} more gold. Play a match or watch an ad.', '{n} altın daha lazım.': 'You need {n} more gold.', '{name} satın alındı!': '{name} purchased!',
+  'sıradan': 'common', 'nadir': 'rare', 'epik': 'epic', 'efsanevi': 'legendary', 'mitik': 'mythic',
+  'Çırak': 'Apprentice', 'Kor Alev': 'Ember Flame', 'Buz Kristali': 'Ice Crystal', 'Zehir Yeşili': 'Venom Green', 'Kraliyet': 'Royal', 'Altın Ayak': 'Golden Foot', 'Boşluk': 'Void', 'Anka': 'Phoenix',
+  'Herkesin ilk kramponu.': "Everyone's first boots.", 'Şutlara ateşli bir iz bırakır.': 'Leaves a fiery trail on shots.', 'Hızlı koşular, keskin dönüşler.': 'Fast runs, sharp turns.', 'Top ayağına yapışır.': 'The ball sticks to your feet.', 'Mor ışıltı, dengeli güç.': 'Purple glow, balanced power.', 'Altın izli şut, altın gol.': 'Golden trail, golden goal.', 'Karanlıktan çıkan pembe şimşek.': 'Pink lightning out of the dark.', 'Küllerinden doğan efsane.': 'A legend reborn from ashes.',
+  'Konfeti': 'Confetti', 'Havai Fişek': 'Fireworks', 'Yıldırım': 'Lightning', 'Altın Yağmuru': 'Gold Rain', 'Neon Halkalar': 'Neon Rings', 'Alev Patlaması': 'Flame Burst', 'Buz Kırıkları': 'Ice Shards', 'Galaksi': 'Galaxy', 'Kalpler': 'Hearts',
+  'Klasik kutlama.': 'The classic celebration.', 'Gökyüzünde patlayan üç dalga.': 'Three bursts in the sky.', 'Topun düştüğü yere yıldırım iner.': 'Lightning strikes where the ball lands.', 'Tribünlerden altın yağar.': 'Gold rains from the stands.', 'Genişleyen neon dalgalar.': 'Expanding neon waves.', 'Kaleden yükselen alev sütunu.': 'A pillar of flame from the goal.', 'Kale donar, kristaller saçılır.': 'The goal freezes and shatters.', 'Sahanın üstünde dönen yıldız bulutu.': 'A star cloud spinning over the pitch.', 'Tatlı bir gol kutlaması.': 'A sweet goal celebration.',
+  'Gece Arenası': 'Night Arena', 'Sahil Stadı': 'Coast Stadium', 'Neon Kubbe': 'Neon Dome', 'Projektörler altında klasik gece maçı.': 'A classic night match under floodlights.', 'Gün batımı, palmiyeler ve deniz.': 'Sunset, palms and sea.', 'Siber şehrin altında, çizgiler ışıldar.': 'Under the cyber city, the lines glow.',
+  'Avuç': 'Handful', 'Kese': 'Pouch', 'Sandık': 'Chest', 'Kasa': 'Vault', 'Hazine': 'Treasure', 'EN İYİ': 'BEST VALUE', 'POPÜLER': 'POPULAR', 'Satın Al': 'Buy', 'Ödeme': 'Checkout', 'Test satın alma (ödeme bağlı değil)': 'Test purchase (no payment connected)',
+  'Bu bir test satın almadır. Yayında Stripe / Google Play / App Store ödemesi buraya bağlanır.': 'This is a test purchase. In production, Stripe / Google Play / App Store checkout connects here.', '+{n} altın hesabına eklendi': '+{n} gold added to your account',
+  // battle pass
+  'Battle Pass · Sezon 1': 'Battle Pass · Season 1', 'ALTIN ÇAĞ': 'GOLDEN AGE', 'Kademe {t} / 30 · {s}': 'Tier {t} / 30 · {s}', 'Premium aktif': 'Premium active', 'Ücretsiz hat': 'Free track', 'Tamamlandı': 'Completed', '{a} / {b} Pass XP': '{a} / {b} Pass XP', ' · Premium Al': ' · Get Premium',
+  "Her maç XP'nin yarısı kadar Pass XP verir. Premium hatta öne çıkanlar:": 'Every match gives half its XP as Pass XP. Premium track highlights:', 'Kademe {n}': 'Tier {n}', 'KADEME {n}': 'TIER {n}', 'Alındı': 'Claimed', 'Al!': 'Claim!', 'Premium': 'Premium', 'Kilitli': 'Locked', 'Premium Battle Pass açıldı!': 'Premium Battle Pass unlocked!', '{r} alındı': '{r} claimed',
+  '{n} Altın': '{n} Gold', '{n} XP': '{n} XP', '{n} Krampon': '{n} Boots', '{n} Efekti': '{n} Effect',
+  // yetenekler
+  'Yetenek Ağacı': 'Skill Tree', 'En yüksek seviye: {n}': 'Highest level: {n}', 'Aktif: {n}': 'Active: {n}', 'yok': 'none', 'Her 5 seviyede bir yetenek açılır. Maçta E tuşu (dokunmatikte YET.) ile kullanılır; aynı anda tek yetenek aktiftir.': 'A skill unlocks every 5 levels. Use it with E (SKILL on touch); only one skill is active at a time.',
+  'Seviye {l} · bekleme {c} sn': 'Level {l} · {c}s cooldown', 'Aktif': 'Active', 'Seç': 'Select', 'Prestij': 'Prestige', 'Seviye 30': 'Level 30', "30. seviyeyi geçince seviye 1'e döner, tüm yetenekler açık kalır ve adının yanına yıldız gelir.": 'Past level 30 you return to level 1, keep every skill and earn a star next to your name.',
+  'Sert Şut': 'Power Shot', 'Hız Çalımı': 'Speed Dribble', 'Falso': 'Curve', 'Turbo': 'Turbo', 'Aşırtma': 'Chip', 'Yıldırım Şut': 'Thunder Shot',
+  'Sonraki vuruş %70 daha güçlü ve havalı.': 'Next kick is 70% stronger and lifted.', 'Anlık ileri atılım, rakibi geçersin.': 'An instant dash past your opponent.', 'Sonraki şut havada kıvrılır.': 'Next shot bends in the air.', '3 saniye boyunca hız ve sınırsız sprint.': '3 seconds of speed and unlimited sprint.', 'Topu kaleciyi aşan bir yayla gönderir.': 'Sends the ball in a high arc.', 'Durdurulamaz, dümdüz, iki kat güçte şut.': 'An unstoppable, dead-straight, double-power shot.',
+  'Yeni yetenek açıldı: {n}': 'New skill unlocked: {n}', 'PRESTİJ {n}! Yıldızın parlıyor.': 'PRESTIGE {n}! Your star shines.',
+  // rank
+  'Rank Merdiveni': 'Rank Ladder', 'Dereceli maç kazan +25 RP, beraberlik +5, kayıp -15. Rank puanı sunucuda tutulur.': 'Win a ranked match +25 RP, draw +5, loss -15. Rank points live on the server.', '{n}+ RP': '{n}+ RP', 'Buradasın': 'You are here', 'Galibiyet: {w} · Maç: {p}': 'Wins: {w} · Matches: {p}',
+  'Bronz': 'Bronze', 'Gümüş': 'Silver', 'Altın ': 'Gold ', 'Platin': 'Platinum', 'Elmas': 'Diamond', 'Şampiyon': 'Champion',
+  // arkadaşlar
+  'Takma ad ekle': 'Add by nickname', 'Ekle': 'Add', 'Çevrimiçi arkadaşlarını özel maça davet edebilirsin.': 'You can invite online friends to a custom match.', 'Davet için sunucuya bağlı olman gerekir.': 'You must be connected to a server to invite.', 'Henüz arkadaş yok. Takma adıyla ekle.': 'No friends yet. Add them by nickname.', 'Çevrimiçi': 'Online', 'Davet 1v1': 'Invite 1v1', 'Davet 2v2': 'Invite 2v2', 'Sil': 'Remove', '{n} çevrimiçi oldu': '{n} is now online', '{n} davet edildi.': '{n} invited.', '{n} şu an çevrimdışı.': '{n} is offline right now.',
+  '{f} seni {m} özel maça davet etti — katılmak için tıkla': '{f} invited you to a {m} custom match — tap to join',
+  // günlük
+  'Günlük Giriş Bonusu': 'Daily Login Bonus', 'Her gün gir, seri bozulmasın. 7. günde özel ödül.': 'Log in every day to keep the streak. Special reward on day 7.', 'Bugün alındı · yarın gel': 'Claimed today · come back tomorrow', 'Ödülü Al': 'Claim Reward', 'GÜN {n}': 'DAY {n}', '+{c} altın, +{x} XP': '+{c} gold, +{x} XP',
+  // reklam
+  'Reklam': 'Ad', 'REKLAM ALANI': 'AD SPACE', 'Buraya gerçek reklam ağı (AdSense / AdMob) bağlanır': 'A real ad network (AdSense / AdMob) connects here', 'Ödül için 5 saniye izle…': 'Watch 5 seconds for the reward…', '+40 altın': '+40 gold', 'Reklam birazdan tekrar hazır.': 'The ad will be ready again shortly.',
+  // ayarlar
+  'Ses efektleri': 'Sound effects', 'Müzik': 'Music', 'Dil': 'Language', 'Parlama / bloom efektleri (zayıf cihazlarda kapat)': 'Glow / bloom effects (turn off on weak devices)', 'Arayüz pırıltıları': 'UI sparkles', 'Sunucu adresi (boş: bu sayfanın sunucusu)': "Server address (empty: this page's server)", 'Bağlan': 'Connect', 'Bağlanılıyor…': 'Connecting…',
+  'Günlük hatırlatma bildirimi': 'Daily reminder notification', 'Bildirimler açık. Günlük bonus hatırlatması gelecek.': 'Notifications on. A daily bonus reminder will arrive.', 'Bildirim izni verilmedi.': 'Notification permission denied.',
+  'Kontroller: WASD/ok tuşları hareket · Boşluk şut · Shift sprint · E yetenek · 1-8 hızlı sohbet': 'Controls: WASD/arrows move · Space shoot · Shift sprint · E skill · 1-8 quick chat', 'Oyun ekranın yenileme hızında çalışır (120 Hz monitörde 120 FPS).': 'The game runs at your screen refresh rate (120 FPS on a 120 Hz display).',
+  'Takma adı değiştir': 'Change nickname', 'Yeni takma ad': 'New nickname', 'Değiştir': 'Change', 'Takma ad değiştirildi.': 'Nickname changed.', 'Bu takma ad alınmış.': 'That nickname is taken.', 'HUD düzeni': 'HUD layout', 'Tuşları Düzenle': 'Edit Buttons', 'Koş tuşu': 'Run button', 'Dokun: aç/kapat': 'Tap: toggle', 'Basılı tut': 'Hold', 'Tuş boyutu': 'Button size', 'HUD kaydedildi.': 'HUD saved.', 'Dil değişti; sayfa yenileniyor…': 'Language changed; reloading…',
+  // özel maç
+  'Oda kodu': 'Room code', 'Kodu arkadaşına gönder. Boş yerlere bot girer.': 'Send the code to a friend. Empty slots are filled by bots.', 'Maçı Başlat': 'Start Match', 'Kurucu bekleniyor…': 'Waiting for host…', 'Odadan Çık': 'Leave Room', 'Kod ile katıl': 'Join by code', 'Katıl': 'Join', 'Mavi takım': 'Blue team', 'Pembe takım': 'Pink team', 'Böyle bir oda yok.': 'No such room.', 'Oda dolu.': 'Room is full.',
+  'Özel Maç (çevrimdışı)': 'Custom Match (offline)', 'Sunucu yokken özel maç botlara karşı kurulur.': 'Without a server, custom matches are set up against bots.', 'Mod': 'Mode', 'Bot zorluğu': 'Bot difficulty', 'Kolay': 'Easy', 'Normal': 'Normal', 'Zor': 'Hard', 'Süre': 'Duration', '1 dk': '1 min', '2 dk': '2 min', '3 dk': '3 min', 'Başlat': 'Start',
+  '{n} ayrıldı, yerine bot geçti.': '{n} left; a bot took over.', 'Sunucu bağlantısı koptu.': 'Lost connection to the server.',
+  'Telefonu yatay çevir': 'Rotate your phone', 'NeonKick yatay oynanır': 'NeonKick is played in landscape', 'DERECELİ': 'RANKED', 'ÖZEL MAÇ': 'CUSTOM', 'ANTRENMAN': 'PRACTICE', 'Bot Kaya': 'Bot Rock', 'Bot Deniz': 'Bot Sea', 'Bot Rüzgar': 'Bot Wind',
+};
+const LANG = (S.lang === 'tr') ? 'tr' : 'en';
+function t(s, vars) { let r = (LANG === 'en' && I18N_EN[s] != null) ? I18N_EN[s] : s; if (vars) for (const k in vars) r = r.split('{' + k + '}').join(vars[k]); return r; }
+function translateDom(root) {
+  if (LANG !== 'en') return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((n) => { const raw = n.nodeValue, k = raw.trim(); if (k && I18N_EN[k] != null) n.nodeValue = raw.replace(k, I18N_EN[k]); });
+  root.querySelectorAll('[placeholder],[aria-label]').forEach((el) => { ['placeholder', 'aria-label'].forEach((a) => { const v = el.getAttribute(a); if (v && I18N_EN[v] != null) el.setAttribute(a, I18N_EN[v]); }); });
+}
+
+translateDom(document.body);
+/* ================= İLERLEME ================= */
+let pendingLevelUp = false;
+function addXp(x) {
+  S.xp += x;
+  while (S.xp >= xpNeed(S.level)) {
+    S.xp -= xpNeed(S.level);
+    if (S.level >= 30) { S.prestige++; S.level = 1; S.maxLevel = 30; toast(t('PRESTİJ {n}! Yıldızın parlıyor.', { n: S.prestige })); AUDIO.unlock(); }
+    else { S.level++; S.maxLevel = Math.max(S.maxLevel, S.level); pendingLevelUp = true; const ab = SIM.ABILITIES.find((a) => a.lvl === S.level); if (ab) { toast(t('Yeni yetenek açıldı: {n}', { n: t(ab.name) })); if (!S.ability) S.ability = ab.id; } }
+  }
+  save();
+}
+function unlockedAbilities() { const cap = S.prestige > 0 ? 30 : S.maxLevel; return SIM.ABILITIES.filter((a) => a.lvl <= cap); }
+
+/* ================= RANK SİMGELERİ ================= */
+function starPath(cx, cy, r) { let d = ''; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; d += (i ? 'L' : 'M') + (cx + Math.cos(a) * rr).toFixed(1) + ' ' + (cy + Math.sin(a) * rr).toFixed(1); } return d + 'Z'; }
+function shade(hex, k) { const n = parseInt(hex.slice(1), 16); const cl = (v) => Math.max(0, Math.min(255, Math.round(v))); const r = cl(((n >> 16) & 255) * k), g = cl(((n >> 8) & 255) * k), b = cl((n & 255) * k); return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0'); }
+function rankSvg(i, size) {
+  const c = RANKS[i][2], id = 'rg' + i + '_' + size;
+  const emblems = [
+    '<path d="M32 42 l-10 -10 l4.5 -4.5 l5.5 5.5 l5.5 -5.5 l4.5 4.5z" fill="#fff" opacity=".9"/>',
+    '<path d="M32 46 l-10 -10 l4.5 -4.5 l5.5 5.5 l5.5 -5.5 l4.5 4.5z M32 33 l-10 -10 l4.5 -4.5 l5.5 5.5 l5.5 -5.5 l4.5 4.5z" fill="#fff" opacity=".9"/>',
+    '<path d="' + starPath(32, 33, 12) + '" fill="#fff" opacity=".95"/>',
+    '<path d="M19 42 l3 -16 l7 7 l3 -11 l3 11 l7 -7 l3 16z" fill="#fff" opacity=".95"/><rect x="19" y="43" width="26" height="3" fill="#fff" opacity=".7"/>',
+    '<path d="M32 19 l12 11 l-12 17 l-12 -17z" fill="#fff" opacity=".95"/><path d="M32 19 v28 M20 30 h24 M26 30 l6 -11 l6 11" stroke="' + c + '" stroke-width="1.3" fill="none"/>',
+    '<path d="' + starPath(32, 32, 11) + '" fill="#fff"/><path d="M14 36 c2 10 8 15 18 17 c10 -2 16 -7 18 -17" stroke="#fff" stroke-width="2.5" fill="none" stroke-linecap="round"/><circle cx="32" cy="32" r="19" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="1.2" stroke-dasharray="3 3"/>',
+  ];
+  return `<svg viewBox="0 0 64 64" width="${size}" height="${size}" aria-label="${t(RANKS[i][0])}"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".6"/><stop offset=".3" stop-color="${c}"/><stop offset="1" stop-color="${shade(c, .45)}"/></linearGradient></defs><path d="M32 3 L56 12 V32 C56 46 46 56 32 61 C18 56 8 46 8 32 V12 Z" fill="url(#${id})" stroke="${c}" stroke-width="2"/><path d="M32 8 L51 15 V32 C51 43 43 51 32 55 C21 51 13 43 13 32 V15 Z" fill="none" stroke="#fff" stroke-opacity=".35"/>${emblems[i]}</svg>`;
+}
+function openRanks() {
+  const cur = RANKS.indexOf(rankOf(S.rp));
+  modal(t('Rank Merdiveni'), `<div class="tiny">${t('Dereceli maç kazan +25 RP, beraberlik +5, kayıp -15. Rank puanı sunucuda tutulur.')}</div><div class="ranks">${RANKS.map((r, i) => `<div class="rankcard ${i === cur ? 'cur' : ''}"><span class="rank-ico" style="--rc:${r[2]}">${rankSvg(i, 64)}</span><b style="font-family:var(--font-display)">${t(r[0])}</b><span class="tiny num">${t('{n}+ RP', { n: r[1] })}</span>${i === cur ? `<span class="pill gold">${t('Buradasın')}</span>` : ''}</div>`).join('')}</div><div class="tiny">${t('Galibiyet: {w} · Maç: {p}', { w: S.wins, p: S.played })}</div>`).dataset.kind = 'ranks';
+}
+/* Menü simgeleri */
+const ICONS = {
+  shop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  pass: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>',
+  skills: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>',
+  friends: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-4 3-6 7-6s7 2 7 6"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c3 0 5 1.6 5 5"/></svg>',
+  daily: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>',
+};
+document.querySelectorAll('[data-ico]').forEach((b) => { const s = document.createElement('span'); s.className = 'ico'; s.innerHTML = ICONS[b.dataset.ico] || ''; b.prepend(s); });
+
+/* ================= AĞ ================= */
+const NET = {
+  ws: null, ok: false, onlineCount: 0, friendsOnline: [], fails: 0, ever: false,
+  url() {
+    // Öncelik: ayarlardan girilen adres → sayfadaki nk-server etiketi (mobil uygulama derlemesinde doldurulur) → sayfanın kendi sunucusu
+    const norm = (u) => u.replace(/^https:/i, 'wss:').replace(/^http:/i, 'ws:').replace(/\/+$/, '');
+    if (S.server) return norm(S.server);
+    const meta = document.querySelector('meta[name="nk-server"]'); if (meta && meta.content) return norm(meta.content);
+    if (location.protocol.startsWith('http')) return (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host; return '';
+  },
+  connect() {
+    const u = NET.url(); if (!u || NET.ws) return;
+    try { NET.ws = new WebSocket(u); } catch (e) { NET.ws = null; return; }
+    NET.ws.onopen = () => { NET.hello(); };
+    NET.ws.onclose = () => { NET.ws = null; if (NET.ok) NET.ever = true; NET.ok = false; setStatus(); if (M.active && M.online) { toast(t('Sunucu bağlantısı koptu.')); endToLobby(); } NET.fails++; if (NET.ever || NET.fails < 3) setTimeout(NET.connect, 4000); };
+    NET.ws.onerror = () => {};
+    NET.ws.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (x) { return; } NET.handle(m); };
+  },
+  send(o) { if (NET.ws && NET.ws.readyState === 1) NET.ws.send(JSON.stringify(o)); },
+  hello() { if (S.nick) NET.send({ t: 'hello', nick: S.nick, token: S.token, boots: S.boots, ability: S.ability, level: S.level, prestige: S.prestige }); },
+  prof() { NET.send({ t: 'prof', boots: S.boots, ability: S.ability, level: S.level, prestige: S.prestige }); },
+  handle(m) {
+    switch (m.t) {
+      case 'hello':
+        if (m.ok) { NET.ok = true; S.token = m.token; S.nick = m.nick; S.rp = m.rp; S.wins = m.wins; S.played = m.played; NET.onlineCount = m.online; save(); setStatus(); refreshLobby(); NET.send({ t: 'presence', friends: S.friends }); }
+        else { NET.ok = false; setStatus(); S.nick = null; S.token = null; save(); show('s-nick'); $('titleMenu').hidden = true; $('nickForm').hidden = false; $('nickErr').textContent = t(m.why || 'Takma ad reddedildi.'); }
+        break;
+      case 'rename': if (m.ok) { S.nick = m.nick; S.token = m.token; save(); refreshLobby(); toast(t('Takma ad değiştirildi.')); closeModal(); } else toast(t(m.why === 'taken' ? 'Bu takma ad alınmış.' : 'Takma ad 3-16 karakter: harf, rakam ve _')); break;
+      case 'presence': NET.friendsOnline = m.online || []; NET.onlineCount = m.total; setStatus(); if (currentModal && currentModal.dataset.kind === 'friends') openFriends(); break;
+      case 'friend': { const i = NET.friendsOnline.indexOf(m.nick); if (m.on && i < 0 && S.friends.map((f) => f.toLowerCase()).includes(m.nick.toLowerCase())) { NET.friendsOnline.push(m.nick); toast(t('{n} çevrimiçi oldu', { n: m.nick })); } if (!m.on && i >= 0) NET.friendsOnline.splice(i, 1); $('friendDot').hidden = NET.friendsOnline.length === 0; break; }
+      case 'queued': $('queueTxt').textContent = t('Sırada… ({m}) Rakip aranıyor', { m: m.mode }); break;
+      case 'dequeued': $('queueTxt').textContent = ''; break;
+      case 'custom': openCustom(m); break;
+      case 'invite': toast(t('{f} seni {m} özel maça davet etti — katılmak için tıkla', { f: m.from, m: m.mode }), 'inv', () => NET.send({ t: 'custom_join', code: m.code })); AUDIO.unlock(); break;
+      case 'match': closeModal(); $('queueTxt').textContent = ''; startMatch({ online: true, mode: m.mode, ranked: m.ranked, slot: m.slot, players: m.players, stadium: m.stadium }); break;
+      case 'st': if (M.active && M.online) applyPacket(m.d); break;
+      case 'chat': showBubble(M.players[m.from] ? M.players[m.from].name : '?', t(QUICK[m.q] || '')); break;
+      case 'result': M.result = m; if (m.left) { if (m.rp != null) S.rp = m.rp; S.played++; save(); refreshLobby(); } else if (M.st && M.st.phase === 'end') showResult(); break;
+      case 'toast': case 'err': toast(m.k === 'left' ? t('{n} ayrıldı, yerine bot geçti.', { n: m.n }) : m.k === 'invited' ? t('{n} davet edildi.', { n: m.n }) : m.k === 'offline' ? t('{n} şu an çevrimdışı.', { n: m.n }) : t(m.m)); break;
+    }
+  },
+};
+function setStatus() { const el = $('netStatus'); el.classList.toggle('on', NET.ok); el.querySelector('span').textContent = NET.ok ? t('Çevrimiçi · {n} oyuncu', { n: NET.onlineCount }) : t('Çevrimdışı · yalnızca bot'); }
+
+/* ================= LOBİ ================= */
+const LOBBY = { char: null, t: 0, ring: null };
+function enterLobby() {
+  M.active = false; closeModal(); show('s-lobby'); clearActors();
+  buildStadium(S.stadium, '1v1');
+  LOBBY.char = makeCharacter(0, S.boots, S.nick); LOBBY.char.position.set(0, .25, 0); LOBBY.char.userData.tag.visible = false; actors.add(LOBBY.char);
+  const podium = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.8, .25, 48), new THREE.MeshStandardMaterial({ color: 0x1a2140, metalness: .6, roughness: .3, emissive: 0x4ee8ff, emissiveIntensity: .15 })); podium.position.y = .12; podium.receiveShadow = true; actors.add(podium);
+  LOBBY.ring = new THREE.Mesh(new THREE.TorusGeometry(1.75, .05, 8, 64), new THREE.MeshStandardMaterial({ color: 0xffcf4a, emissive: 0xffcf4a, emissiveIntensity: 1.2 })); LOBBY.ring.rotation.x = Math.PI / 2; LOBBY.ring.position.y = .27; actors.add(LOBBY.ring);
+  const ball = makeBall(); ball.position.set(1.1, SIM.BR + .25, .9); actors.add(ball);
+  MUSIC.start('lobby'); refreshLobby(); checkDaily();
+}
+function clearActors() { while (actors.children.length) actors.remove(actors.children[0]); while (fxGroup.children.length) fxGroup.remove(fxGroup.children[0]); particles.length = 0; }
+function renderLobby(dt) {
+  LOBBY.t += dt; const tt = LOBBY.t;
+  camera.position.set(Math.sin(tt * .15) * 9.5, 3.6 + Math.sin(tt * .3) * .25, Math.cos(tt * .15) * 9.5); camera.lookAt(0, .6, 0);
+  if (LOBBY.char) { LOBBY.char.rotation.y = Math.atan2(camera.position.x, camera.position.z); animateCharacter(LOBBY.char, tt * .6, 0, dt, tt, { idle: true }); }
+  if (LOBBY.ring) LOBBY.ring.rotation.z = tt * .5;
+}
+function refreshLobby() {
+  $('lbNick').textContent = S.nick || '—'; $('avatarLetter').textContent = (S.nick || 'K')[0].toUpperCase();
+  $('lbLevel').textContent = t('Lv ') + S.level; $('lbPrestige').hidden = !S.prestige; $('lbPrestige').textContent = '★'.repeat(Math.min(5, S.prestige)) + (S.prestige > 5 ? ' ' + S.prestige : '');
+  $('lbXp').style.width = (S.xp / xpNeed(S.level) * 100) + '%'; $('lbXpTxt').textContent = `${S.xp} / ${xpNeed(S.level)} XP`;
+  const r = rankOf(S.rp), ri = RANKS.indexOf(r); $('rankName').textContent = t(r[0]); $('rankPts').textContent = S.rp + t(' RP'); const ic = $('rankIco'); ic.innerHTML = rankSvg(ri, 34); ic.style.setProperty('--rc', r[2]);
+  $('skillDot').hidden = !unlockedAbilities().some((a) => a.id !== S.ability && !S.seenAb.includes(a.id));
+  $('coinTxt').textContent = S.coins.toLocaleString(LANG === 'tr' ? 'tr-TR' : 'en-US');
+  const B = SIM.BOOTS[S.boots]; $('bootName').textContent = t(B.name); $('bootStats').textContent = t('Güç {p} · Hız {s} · Kontrol {c}', { p: B.power.toFixed(2), s: B.speed.toFixed(2), c: B.control.toFixed(2) }); $('bootChip').style.background = `linear-gradient(135deg,#${B.color.toString(16).padStart(6, '0')},#${B.glow.toString(16).padStart(6, '0')})`; $('bootChip').style.setProperty('--c', B.trail);
+  const ab = SIM.ABILITIES.find((a) => a.id === S.ability); $('abName').textContent = ab ? t(ab.name) : t('Yetenek yok'); $('abNote').textContent = ab ? t(ab.desc) : t('5. seviyede ilk yetenek açılır'); $('lbAb').textContent = ab ? t(ab.name) : '—'; $('lbAb').classList.toggle('ready', !!ab);
+  const sel = $('stadiumSel'); sel.innerHTML = ''; Object.keys(STADIUMS).forEach((k) => { const o = document.createElement('option'); o.value = k; o.textContent = t(STADIUMS[k].name) + (S.ownedStadiums.includes(k) ? '' : ' 🔒'); o.disabled = !S.ownedStadiums.includes(k); sel.appendChild(o); }); sel.value = S.stadium;
+  const tier = Math.min(30, Math.floor(S.bpXp / BP_TIER_XP)); let claimable = false; for (let i = 1; i <= tier; i++) { if (!S.bpClaimed.includes('f' + i)) claimable = true; if (S.bpPremium && !S.bpClaimed.includes('p' + i)) claimable = true; } $('passDot').hidden = !claimable;
+  $('dailyDot').hidden = S.daily.last === todayKey();
+}
+function todayKey() { const d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+function checkDaily() { if (S.daily.last !== todayKey()) setTimeout(openDaily, 600); }
+
+/* ================= MAÇ ================= */
+const KEYS = { up: 0, down: 0, left: 0, right: 0, kick: 0, sprint: 0, ab: 0 };
+const M = { active: false, online: false, st: null, slot: 0, players: [], chars: {}, ball: null, shadow: null, inputs: {}, acc: 0, timeScale: 1, shake: 0, kickEdge: false, kickCharge: 0, chargeStart: 0, abEdge: false, ranked: false, kind: 'bot', mode: '1v1', stadium: 'night', botDiff: .7, cd: {}, remote: null, result: null, slowT: 0, sendT: 0, lastEvT: 0, stats: { goals: 0 }, sprintOn: false };
+function matchTitle() { return M.ranked ? t('DERECELİ') : M.online ? t('ÖZEL MAÇ') : t('ANTRENMAN'); }
+
+function startMatch(o) {
+  closeModal(); clearActors(); M.result = null; M.stats = { goals: 0 }; M.cd = {}; M.timeScale = 1; M.slowT = 0; M.shake = 0; M.remote = null; M.acc = -0.7; M.sprintOn = false; M.chargeStart = 0;
+  M.online = !!o.online; M.mode = o.mode; M.ranked = !!o.ranked; M.kind = o.kind || (o.online ? (o.ranked ? 'ranked' : 'custom') : 'bot'); M.slot = o.slot || 0; M.stadium = o.stadium || S.stadium; M.botDiff = o.botDiff || .7;
+  M.players = o.players;
+  buildStadium(M.stadium, M.mode);
+  M.st = SIM.createState(M.mode, M.players.map((p) => ({ id: p.id, team: p.team, name: p.name, boots: p.boots, ability: p.ability, bot: p.bot })));
+  M.chars = {}; M.players.forEach((p) => { const c = makeCharacter(p.team, p.boots, p.name); actors.add(c); M.chars[p.id] = c; });
+  M.ball = makeBall(); actors.add(M.ball); M.shadow = makeShadowBlob(); actors.add(M.shadow);
+  const me = M.players[M.slot], mates = M.players.filter((p) => p.team === me.team), opps = M.players.filter((p) => p.team !== me.team);
+  $('hudT0').textContent = (me.team === 0 ? mates : opps).map((p) => p.name).join(' & '); $('hudT1').textContent = (me.team === 1 ? mates : opps).map((p) => p.name).join(' & ');
+  const ab = SIM.ABILITIES.find((a) => a.id === me.ability); $('hudAbName').textContent = ab ? t(ab.name) : '—'; $('hudAb').classList.toggle('ready', !!ab); $('tbAbName').textContent = ab ? t(ab.name).split(' ')[0].toUpperCase() : t('YET.'); $('tbAb').classList.toggle('ready', !!ab);
+  $('qcBar').innerHTML = QUICK.map((q, i) => `<button data-q="${i}">${i + 1}· ${t(q)}</button>`).join(''); $('qcBar').querySelectorAll('button').forEach((b) => { b.onclick = () => sendQuick(+b.dataset.q); });
+  $('tbSprint').classList.remove('on'); $('qcBar').classList.remove('open');
+  drawScreen(matchTitle(), { n: $('hudT0').textContent, s: 0 }, { n: $('hudT1').textContent, s: 0 });
+  applyHud(); show('s-match'); M.active = true; cdShown = 99; MUSIC.start('match'); updateHud();
+}
+function sendQuick(i) { if (!M.active) return; if (M.online) NET.send({ t: 'chat', q: i }); else { showBubble(S.nick, t(QUICK[i])); if (Math.random() < .7) setTimeout(() => showBubble(t('Bot'), t(QUICK[[0, 5, 6, 7, 3][Math.floor(Math.random() * 5)]])), 900); } }
+function showBubble(who, msg) { const box = $('bubbles'), d = document.createElement('div'); d.className = 'bubble'; d.innerHTML = `<b></b> `; d.querySelector('b').textContent = who + ':'; d.appendChild(document.createTextNode(' ' + msg)); box.appendChild(d); while (box.children.length > 5) box.firstChild.remove(); [...box.children].forEach((c, i, a) => c.classList.toggle('old', i < a.length - 2)); setTimeout(() => { if (d.parentNode) d.remove(); }, 12000); }
+
+function myInput() {
+  let mx = KEYS.right - KEYS.left + (touchVec.x), mz = KEYS.down - KEYS.up + (touchVec.y);
+  const l = Math.hypot(mx, mz); if (l > 1) { mx /= l; mz /= l; }
+  const inp = { mx, mz, kick: M.kickEdge, charge: M.kickCharge, sprint: !!KEYS.sprint || M.sprintOn, ab: M.abEdge };
+  M.kickEdge = false; M.abEdge = false; M.kickCharge = 0; return inp;
+}
+function tickOffline(dt) {
+  const st = M.st, inputs = {};
+  st.players.forEach((p) => { if (p.id === M.slot) inputs[p.id] = myInput(); else inputs[p.id] = SIM.botInput(st, p.id, M.botDiff); });
+  SIM.step(st, inputs, dt); handleEvents(st.events, st);
+}
+function applyPacket(d) {
+  const st = M.st; st.score = d.s; st.time = d.t; st.phase = d.ph; st.phaseT = d.pt; st.overtime = d.ot; st.winner = d.w;
+  M.remote = d;
+  d.p.forEach((a) => { const p = st.players[a[0]]; if (!p) return; p.x = a[1]; p.z = a[2]; p.vx = a[3]; p.vz = a[4]; if (a[0] !== M.slot) { p.dx = a[5]; p.dz = a[6]; } p.stamina = a[7]; p.anim = a[8]; p.abCd = a[9]; p.stun = a[10]; p.dashT = a[11]; p.boostT = a[12];
+    if (a[0] === M.slot && p.px != null) { const ex = p.x - p.px, ez = p.z - p.pz, el = Math.hypot(ex, ez); if (el > 2.5) { p.px = p.x; p.pz = p.z; } else { p.px += ex * .25; p.pz += ez * .25; } } });
+  const b = st.ball; b.x = d.b[0]; b.z = d.b[1]; b.y = d.b[2]; b.vx = d.b[3]; b.vz = d.b[4]; b.vy = d.b[5];
+  if (d.ev && d.ev.length) handleEvents(d.ev, st);
+  if (st.phase === 'end' && M.result) showResult();
+}
+let cdShown = 99;
+function handleEvents(evs, st) {
+  evs.forEach((e) => {
+    const pl = e.id != null ? M.players[e.id] : null; const B = pl ? (SIM.BOOTS[pl.boots] || SIM.BOOTS.basic) : SIM.BOOTS.basic;
+    if (e.t === 'whistle') { AUDIO.whistle(); flashLights(true); setTimeout(() => flashLights(false), 450); showCountdown(t('BAŞLA')); }
+    else if (e.t === 'kick') { AUDIO.kick(e.pow, e.kind); kickTrail(e.x, e.z, e.dirx, e.dirz, B.trail, e.kind !== 'kick'); if (e.kind !== 'kick') { M.shake = Math.max(M.shake, .25); } }
+    else if (e.t === 'touch') AUDIO.touch();
+    else if (e.t === 'bounce') AUDIO.bounce(e.v);
+    else if (e.t === 'wall') AUDIO.wall(e.v);
+    else if (e.t === 'post') { AUDIO.post(); M.shake = Math.max(M.shake, .3); }
+    else if (e.t === 'tackle') AUDIO.tackle();
+    else if (e.t === 'ability') { AUDIO.ability(e.ab); if (M.chars[e.id]) spawnParticles({ n: 60, colors: [B.trail, '#ffffff'], speed: 5, grav: -4, size: .15, life: .7 }, M.chars[e.id].position.x, M.chars[e.id].position.z, .4); }
+    else if (e.t === 'goal') onGoal(e);
+    else if (e.t === 'overtime') { toast(t('UZATMA · Altın gol kazanır')); AUDIO.whistle(true); $('hudClock').classList.add('ot'); }
+    else if (e.t === 'end') onEnd();
+  });
+}
+function showCountdown(txt) { const d = document.createElement('div'); d.className = 'countdown'; d.innerHTML = '<div></div>'; d.firstChild.textContent = txt; document.body.appendChild(d); setTimeout(() => d.remove(), 1000); }
+function onGoal(e) {
+  const me = M.players[M.slot], mine = e.team === me.team, scorer = M.players[e.scorer];
+  const effId = (scorer && scorer.id === M.slot) ? S.effect : (scorer && scorer.bot ? ['confetti', 'fireworks', 'flames'][e.scorer % 3] : 'confetti');
+  const cfg = EFFECTS[effId] || EFFECTS.confetti; spawnParticles(cfg, e.x, e.z, 1);
+  if (effId === 'fireworks') { setTimeout(() => spawnParticles(cfg, e.x - 6, e.z + 4, 9), 400); setTimeout(() => spawnParticles(cfg, e.x + 5, e.z - 5, 11), 800); }
+  if (effId === 'lightning') { flashLights(true); setTimeout(() => flashLights(false), 180); setTimeout(() => { flashLights(true); setTimeout(() => flashLights(false), 120); }, 350); }
+  M.shake = 1; if (!M.online) { M.timeScale = .3; M.slowT = 1.1; }
+  if (scorer && scorer.id === M.slot) M.stats.goals++;
+  const d = document.createElement('div'); d.className = 'goalflash'; d.innerHTML = `<div>${e.own ? t('KENDİ KALESİNE') : t('GOOOL')}<small></small></div>`; d.querySelector('small').textContent = scorer ? scorer.name : ''; document.body.appendChild(d); setTimeout(() => d.remove(), 2700);
+  if (mine) AUDIO.cheer(); else AUDIO.groan();
+  drawScreen(matchTitle(), { n: $('hudT0').textContent, s: M.st.score[0] }, { n: $('hudT1').textContent, s: M.st.score[1] });
+  if (!M.online && !mine && Math.random() < .6) setTimeout(() => showBubble(t('Bot'), t('Ne gol!')), 1200);
+  updateHud();
+}
+function onEnd() {
+  const st = M.st, me = M.players[M.slot], won = st.winner === me.team, draw = st.winner === 2;
+  AUDIO.whistle(true); MUSIC.stop(); setTimeout(() => MUSIC.sting(won ? 'win' : 'lose'), 300); if (won) AUDIO.cheer();
+  if (!M.online) { M.result = { won, draw, score: st.score, dRp: 0, ranked: false }; setTimeout(showResult, 1600); }
+  else if (M.result) setTimeout(showResult, 1600);
+}
+function showResult() {
+  if (!M.active) return; M.active = false; const r = M.result || { won: false, draw: true, score: M.st.score };
+  const base = r.won ? 120 : r.draw ? 70 : 45; let xp = base + M.stats.goals * 15; let coins = (r.won ? 60 : r.draw ? 35 : 20) + M.stats.goals * 5;
+  if (!M.online) coins = Math.round(coins * .6);
+  if (M.ranked && r.dRp !== undefined) { S.rp = r.rp != null ? r.rp : Math.max(0, S.rp + r.dRp); }
+  S.played++; if (r.won) S.wins++; pendingLevelUp = false; addXp(xp); S.coins += coins; S.bpXp += Math.round(xp / 2); save(); NET.prof();
+  $('resTitle').textContent = r.won ? t('GALİBİYET') : r.draw ? t('BERABERLİK') : t('MAĞLUBİYET'); $('resTitle').className = r.won ? 'win' : r.draw ? 'draw' : 'lose';
+  const me = M.players[M.slot]; const s = r.score || M.st.score; const mine = me.team === 0 ? s[0] : s[1], theirs = me.team === 0 ? s[1] : s[0];
+  $('resScore').textContent = `${mine} - ${theirs}`; $('resA').textContent = me.team === 0 ? $('hudT0').textContent : $('hudT1').textContent; $('resB').textContent = me.team === 0 ? $('hudT1').textContent : $('hudT0').textContent;
+  $('resRewards').innerHTML = `<div class="r">+${xp}<small>${t('XP')}</small></div><div class="r">+${coins}<small>${t('Altın')}</small></div><div class="r">+${Math.round(xp / 2)}<small>${t('Pass XP')}</small></div>` + (M.ranked ? `<div class="r ${r.dRp >= 0 ? 'up' : 'down'}">${r.dRp >= 0 ? '+' : ''}${r.dRp}<small>${t('Rank puanı')}</small></div>` : '') + (M.stats.goals ? `<div class="r">${M.stats.goals}<small>${t('Gol')}</small></div>` : '');
+  $('resXp').style.width = (S.xp / xpNeed(S.level) * 100) + '%'; $('resXpTxt').textContent = `${t('Seviye {l}', { l: S.level })} · ${S.xp} / ${xpNeed(S.level)} XP`;
+  $('resLvl').hidden = !pendingLevelUp; if (pendingLevelUp) AUDIO.unlock();
+  const rr = rankOf(S.rp); $('resRank').hidden = !M.ranked; if (M.ranked) $('resRank').innerHTML = `<span class="rank-ico" style="--rc:${rr[2]};width:48px;height:48px">${rankSvg(RANKS.indexOf(rr), 48)}</span><b style="font-family:var(--font-display)">${t(rr[0])}</b><span class="tiny num">${S.rp} RP</span>`;
+  show('s-result'); setTimeout(() => MUSIC.start('lobby'), 2500); $('hudClock').classList.remove('ot'); $('bubbles').innerHTML = '';
+  if (r.won) setTimeout(() => FX.pop($('resTitle'), ['#ffcf4a', '#ffffff', '#ff9a1f', '#4ee8ff']), 200);
+}
+function endToLobby() { if (M.online) NET.send({ t: 'leave' }); M.active = false; $('hudClock').classList.remove('ot'); $('bubbles').innerHTML = ''; enterLobby(); }
+function confirmLeave() {
+  if (!M.active) return;
+  const w = modal(t('Maçtan ayrıl'), `<p style="margin:0;font-size:17px">${t('Ayrılmak istediğinden emin misin?')}</p>${M.ranked ? `<p style="margin:0;color:var(--red);font-weight:700">${t('Dereceli maçtan ayrılırsan -20 RP cezası alırsın ve maç kaybedilmiş sayılır.')}</p>` : ''}<div class="row"><button class="btn danger" id="cfYes">${t('Evet, ayrıl')}</button><button class="btn" id="cfNo">${t('Vazgeç')}</button></div>`, null, { small: true });
+  w.dataset.kind = 'confirm'; w.querySelector('#cfYes').onclick = () => { closeModal(); endToLobby(); }; w.querySelector('#cfNo').onclick = closeModal;
+}
+
+const camFocus = new THREE.Vector3(), camTarget = new THREE.Vector3();
+function renderMatch(dt, now) {
+  const st = M.st, L2 = st.L / 2, W2 = st.W / 2;
+  if (!M.online) {
+    if (M.slowT > 0) { M.slowT -= dt; if (M.slowT <= 0) M.timeScale = 1; }
+    M.acc += dt * M.timeScale; let n = 0; while (M.acc >= SIM.TICK && n++ < 4) { tickOffline(SIM.TICK); M.acc -= SIM.TICK; }
+  } else {
+    M.sendT += dt; if (M.sendT >= 1 / 60) { M.sendT = 0; const i = myInput(); M.lastIn = i; NET.send({ t: 'in', mx: +i.mx.toFixed(2), mz: +i.mz.toFixed(2), k: i.kick, c: +i.charge.toFixed(2), s: i.sprint, a: i.ab }); }
+    // İstemci tahmini: kendi oyuncumu yerel olarak hareket ettir, sunucu konumuna yumuşak düzeltme
+    if (st.phase === 'play') { const me = st.players[M.slot], li = M.lastIn || { mx: 0, mz: 0 }; const boots = SIM.BOOTS[me.boots] || SIM.BOOTS.basic; let sp = 9.2 * boots.speed; if ((li.sprint) && me.stamina > 0) sp *= 1.42; if (me.boostT) sp *= 1.2; if (!me.stun && !me.dashT) { const k = Math.min(1, 18 * dt); me.pvx = (me.pvx || 0) + (li.mx * sp - (me.pvx || 0)) * k; me.pvz = (me.pvz || 0) + (li.mz * sp - (me.pvz || 0)) * k; me.px = (me.px == null ? me.x : me.px) + me.pvx * dt; me.pz = (me.pz == null ? me.z : me.pz) + me.pvz * dt; if (Math.hypot(li.mx, li.mz) > .05) { const l = Math.hypot(li.mx, li.mz); me.dx = li.mx / l; me.dz = li.mz / l; } } else { me.px = me.x; me.pz = me.z; }
+      const b = st.ball; b.x += b.vx * dt; b.z += b.vz * dt; b.y = Math.max(SIM.BR, b.y + b.vy * dt); }
+  }
+  if (st.phase === 'countdown') { const n = Math.ceil(st.phaseT - .3); if (n >= 1 && n <= 3 && n < cdShown) { cdShown = n; showCountdown(String(n)); } } else cdShown = 99;
+  const lerpK = M.online ? Math.min(1, dt * 18) : 1;
+  st.players.forEach((p) => {
+    const c = M.chars[p.id]; if (!c) return;
+    const tx = (M.online && p.id === M.slot && p.px != null) ? p.px : p.x, tz = (M.online && p.id === M.slot && p.pz != null) ? p.pz : p.z;
+    c.position.x += (tx - c.position.x) * lerpK; c.position.z += (tz - c.position.z) * lerpK;
+    const ty = Math.atan2(p.dx, p.dz); let d = ty - c.rotation.y; d = Math.atan2(Math.sin(d), Math.cos(d)); c.rotation.y += d * Math.min(1, dt * 14);
+    animateCharacter(c, p.anim, Math.hypot(p.vx, p.vz), dt, now / 1000);
+    c.userData.marker.visible = p.id === M.slot; if (p.id === M.slot) c.userData.marker.position.y = 3.65 + Math.sin(now / 220) * .15; c.userData.ring.material.opacity = p.id === M.slot ? .9 : .35; c.userData.ring.scale.setScalar(p.id === M.slot ? 1 + Math.sin(now / 150) * .06 : 1);
+    if (p.stun > 0) c.rotation.z = Math.sin(now / 40) * .15; else c.rotation.z = 0;
+    if (p.dashT > 0 || p.boostT > 0) { if (Math.random() < .5) spawnParticles({ n: 6, colors: [c.userData.B.trail], speed: 2, grav: 1, size: .12, life: .3 }, c.position.x, c.position.z, .3); }
+  });
+  const b = st.ball; if (M.online) { M.ball.position.set(b.x, b.y, b.z); } M.ball.position.x += (b.x - M.ball.position.x) * lerpK; M.ball.position.z += (b.z - M.ball.position.z) * lerpK; M.ball.position.y += (b.y - M.ball.position.y) * lerpK;
+  M.ball.rotation.x += b.vz * dt / SIM.BR; M.ball.rotation.z -= b.vx * dt / SIM.BR; M.shadow.position.set(M.ball.position.x, .025, M.ball.position.z); M.shadow.scale.setScalar(Math.max(.4, 1 - (b.y - SIM.BR) * .12));
+  const me = st.players[M.slot];
+  camFocus.set(b.x * .6 + me.x * .4, 0, b.z * .6 + me.z * .4); camFocus.x = THREE.MathUtils.clamp(camFocus.x, -L2 + 8, L2 - 8); camFocus.z = THREE.MathUtils.clamp(camFocus.z, -W2 + 5, W2 - 5);
+  camTarget.lerp(camFocus, Math.min(1, dt * 6));
+  const H = M.mode === '1v1' ? 30 : 33.5, D = M.mode === '1v1' ? 15 : 16.5;
+  const sh = M.shake > 0 ? M.shake : 0; M.shake = Math.max(0, M.shake - dt * 1.6);
+  camera.position.set(camTarget.x + (Math.random() - .5) * sh, H + (Math.random() - .5) * sh, camTarget.z + D + (Math.random() - .5) * sh); camera.lookAt(camTarget.x, 0, camTarget.z);
+  const crowd = world.userData.crowd; if (crowd && st.phase === 'goal') { crowd.position.y = Math.abs(Math.sin(now / 90)) * .35; } else if (crowd) crowd.position.y = Math.abs(Math.sin(now / 400)) * .05;
+  updateHud();
+}
+function updateHud() {
+  const st = M.st; if (!st) return; const me = st.players[M.slot]; const meP = M.players[M.slot];
+  const H = updateHud.c || (updateHud.c = {}); const set = (id, v) => { if (H[id] !== v) { H[id] = v; $(id).textContent = v; } };
+  set('hudS0', String(st.score[0])); set('hudS1', String(st.score[1]));
+  const tt = Math.max(0, Math.ceil(st.time)); set('hudClock', (st.overtime ? '+' : '') + Math.floor(tt / 60) + ':' + String(tt % 60).padStart(2, '0'));
+  const stam = Math.round(me.stamina); if (H.stam !== stam) { H.stam = stam; const sb = $('hudStam'); sb.style.width = stam + '%'; sb.classList.toggle('low', stam < 25); }
+  const ab = SIM.ABILITIES.find((a) => a.id === meP.ability); if (ab) { const cd = +(me.abCd / ab.cd).toFixed(2); if (H.cd !== cd) { H.cd = cd; const sc = `scaleY(${cd})`; $('hudAbCd').style.transform = sc; $('tbAbCd').style.transform = sc; $('hudAb').classList.toggle('ready', cd <= 0); $('tbAb').classList.toggle('ready', cd <= 0); } }
+}
+
+/* ================= GİRDİ ================= */
+const keymap = { KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', Space: 'kick', KeyJ: 'kick', KeyK: 'kick', ShiftLeft: 'sprint', ShiftRight: 'sprint', KeyE: 'ab', KeyL: 'ab' };
+function kickDown() { M.kickEdge = true; M.kickCharge = 0; }
+function kickUp() {}
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  const k = keymap[e.code]; if (k) { if (!KEYS[k]) { if (k === 'kick') kickDown(); if (k === 'ab') M.abEdge = true; } KEYS[k] = 1; e.preventDefault(); }
+  if (M.active && e.code.startsWith('Digit')) { const n = +e.code.slice(5) - 1; if (n >= 0 && n < 8) sendQuick(n); }
+  if (e.code === 'Escape' && M.active && !currentModal) confirmLeave();
+});
+addEventListener('keyup', (e) => { const k = keymap[e.code]; if (k) { KEYS[k] = 0; if (k === 'kick') kickUp(); } });
+const touchVec = { x: 0, y: 0 };
+(function touchSetup() {
+  const zone = $('touchZone'), stick = $('stick'), knob = $('stickKnob'); let pid = null, cx = 0, cy = 0;
+  const R = 45, editing = () => document.body.classList.contains('hud-edit');
+  zone.addEventListener('pointerdown', (e) => { if (editing()) return; pid = e.pointerId; cx = e.clientX; cy = e.clientY; stick.style.left = (cx - 60) + 'px'; stick.style.top = (cy - 60) + 'px'; stick.style.bottom = 'auto'; stick.style.opacity = '1'; zone.setPointerCapture(pid); });
+  zone.addEventListener('pointermove', (e) => { if (e.pointerId !== pid) return; let dx = e.clientX - cx, dy = e.clientY - cy; const l = Math.hypot(dx, dy); if (l > R) { dx *= R / l; dy *= R / l; } knob.style.transform = `translate(${dx}px,${dy}px)`; const dz = l < 6 ? 0 : 1; touchVec.x = dx / R * dz; touchVec.y = dy / R * dz; });
+  const end = (e) => { if (e.pointerId !== pid) return; pid = null; knob.style.transform = ''; touchVec.x = touchVec.y = 0; stick.style.opacity = '.55'; };
+  zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end);
+  // Tuşlar: kayarak başka tuşa geçilebilir, birden fazla parmak aynı anda
+  const held = {};
+  const pressBtn = (id) => { const el = $(id); el.classList.add('pressed'); if (id === 'tbKick') { KEYS.kick = 1; kickDown(); } else if (id === 'tbAb') { M.abEdge = true; KEYS.ab = 1; } else if (id === 'tbSprint') { if (S.sprintToggle) { M.sprintOn = !M.sprintOn; el.classList.toggle('on', M.sprintOn); } else KEYS.sprint = 1; } };
+  const releaseBtn = (id) => { const el = $(id); el.classList.remove('pressed'); if (id === 'tbKick') KEYS.kick = 0; else if (id === 'tbAb') KEYS.ab = 0; else if (id === 'tbSprint' && !S.sprintToggle) KEYS.sprint = 0; };
+  ['tbKick', 'tbAb', 'tbSprint'].forEach((id) => { $(id).addEventListener('pointerdown', (e) => { if (editing()) return; e.preventDefault(); held[e.pointerId] = id; pressBtn(id); }); });
+  document.addEventListener('pointermove', (e) => { const cur = held[e.pointerId]; if (cur === undefined) return; const hit = document.elementFromPoint(e.clientX, e.clientY); const el = hit && hit.closest ? hit.closest('.tb') : null; const id = el && ['tbKick', 'tbAb', 'tbSprint'].includes(el.id) ? el.id : null; if (id !== cur) { if (cur) releaseBtn(cur); held[e.pointerId] = id; if (id) pressBtn(id); } });
+  const endHold = (e) => { const cur = held[e.pointerId]; if (cur === undefined) return; if (cur) releaseBtn(cur); delete held[e.pointerId]; };
+  document.addEventListener('pointerup', endHold); document.addEventListener('pointercancel', endHold);
+})();
+/* HUD düzeni: kayıtlı konumları uygula / düzenle */
+const HUD_IDS = ['stick', 'tbKick', 'tbAb', 'tbSprint', 'tbChat', 'hudBottom'];
+const HUD_DEF = {}; HUD_IDS.forEach((id) => { const el = $(id); if (el) HUD_DEF[id] = el.getAttribute('style') || ''; });
+function applyHud() {
+  document.documentElement.style.setProperty('--hs', S.hudScale || 1);
+  HUD_IDS.forEach((id) => { const el = $(id); if (!el) return; const p = S.hud && S.hud[id]; el.setAttribute('style', HUD_DEF[id]); if (p) { el.style.left = p.x + 'vw'; el.style.top = p.y + 'vh'; el.style.right = 'auto'; el.style.bottom = 'auto'; } });
+}
+function openHudEditor() {
+  closeModal(); document.body.classList.add('hud-edit'); show('s-match'); applyHud(); $('tbChat').style.display = 'inline-flex';
+  const drags = [];
+  HUD_IDS.forEach((id) => { const el = $(id); if (!el) return; let p = null, ox = 0, oy = 0;
+    const down = (e) => { p = e.pointerId; const r = el.getBoundingClientRect(); ox = e.clientX - r.left; oy = e.clientY - r.top; el.setPointerCapture(p); e.preventDefault(); e.stopPropagation(); };
+    const move = (e) => { if (e.pointerId !== p) return; const x = (e.clientX - ox) / innerWidth * 100, y = (e.clientY - oy) / innerHeight * 100; el.style.left = x + 'vw'; el.style.top = y + 'vh'; el.style.right = 'auto'; el.style.bottom = 'auto'; S.hud = S.hud || {}; S.hud[id] = { x: +x.toFixed(2), y: +y.toFixed(2) }; };
+    const up = (e) => { if (e.pointerId === p) p = null; };
+    el.addEventListener('pointerdown', down, true); el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); drags.push([el, down, move, up]); });
+  const finish = () => { drags.forEach(([el, d, m, u]) => { el.removeEventListener('pointerdown', d, true); el.removeEventListener('pointermove', m); el.removeEventListener('pointerup', u); el.removeEventListener('pointercancel', u); }); document.body.classList.remove('hud-edit'); $('tbChat').style.display = ''; enterLobby(); };
+  $('hudSave').onclick = () => { save(); toast(t('HUD kaydedildi.')); finish(); };
+  $('hudReset').onclick = () => { S.hud = null; save(); applyHud(); finish(); };
+}
+
+/* ================= MAĞAZA ================= */
+function bootPreview(cv, B) {
+  const g = cv.getContext('2d'); cv.width = 300; cv.height = 180; const c = '#' + B.color.toString(16).padStart(6, '0'), gl = '#' + B.glow.toString(16).padStart(6, '0');
+  const rg = g.createRadialGradient(150, 140, 10, 150, 140, 120); rg.addColorStop(0, gl + '66'); rg.addColorStop(1, 'transparent'); g.fillStyle = rg; g.fillRect(0, 0, 300, 180);
+  g.save(); g.translate(0, -6); g.shadowColor = gl; g.shadowBlur = 28;
+  const body = () => { g.beginPath(); g.moveTo(48, 128); g.bezierCurveTo(44, 90, 60, 58, 100, 52); g.bezierCurveTo(130, 48, 150, 70, 178, 86); g.bezierCurveTo(205, 100, 240, 104, 262, 118); g.lineTo(264, 134); g.lineTo(48, 134); g.closePath(); };
+  const lg = g.createLinearGradient(0, 50, 0, 134); lg.addColorStop(0, shade(c, 1.35)); lg.addColorStop(.6, c); lg.addColorStop(1, shade(c, .55)); g.fillStyle = lg; body(); g.fill(); g.shadowBlur = 0;
+  g.fillStyle = '#15161c'; g.fillRect(46, 132, 220, 9); g.fillStyle = '#2a2c36'; for (let i = 0; i < 7; i++) { g.beginPath(); g.moveTo(62 + i * 30, 141); g.lineTo(70 + i * 30, 141); g.lineTo(66 + i * 30, 150); g.closePath(); g.fill(); }
+  g.fillStyle = shade(c, .75); g.beginPath(); g.moveTo(100, 54); g.lineTo(128, 60); g.lineTo(150, 104); g.lineTo(118, 108); g.closePath(); g.fill();
+  g.strokeStyle = gl; g.lineWidth = 3; g.lineCap = 'round'; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(108 + i * 9, 66 + i * 10); g.lineTo(134 + i * 9, 62 + i * 10); g.stroke(); }
+  g.strokeStyle = gl; g.lineWidth = 5; g.shadowColor = gl; g.shadowBlur = 16; g.beginPath(); g.moveTo(150, 92); g.quadraticCurveTo(200, 96, 250, 122); g.stroke(); g.shadowBlur = 0;
+  for (let i = 0; i < 14; i++) { g.fillStyle = i % 2 ? '#fff' : gl; g.globalAlpha = .5 + Math.random() * .5; const x = 40 + Math.random() * 230, y = 30 + Math.random() * 110, r = 1 + Math.random() * 2; g.beginPath(); g.moveTo(x, y - r * 2.5); g.lineTo(x + r, y); g.lineTo(x, y + r * 2.5); g.lineTo(x - r, y); g.closePath(); g.fill(); }
+  g.restore();
+}
+function abilitySvg(id, color) {
+  const c = color || '#ffcf4a';
+  const P = { power: '<path d="M14 36 L30 10 L26 24 L38 22 L22 44 L26 30 Z" fill="' + c + '"/>', dash: '<path d="M8 20 h22 M6 28 h20 M10 36 h16" stroke="' + c + '" stroke-width="3" stroke-linecap="round"/><path d="M28 14 l12 10 l-12 10z" fill="' + c + '"/>',
+    curve: '<path d="M8 38 C 14 10, 34 10, 40 36" stroke="' + c + '" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="40" cy="36" r="4" fill="' + c + '"/>', boost: '<path d="M24 6 l8 14 h-6 l6 16 h-16 l6 -12 h-6z" fill="' + c + '"/><path d="M14 40 h20" stroke="' + c + '" stroke-width="3" stroke-linecap="round"/>',
+    lob: '<path d="M8 40 C 12 14, 36 14, 40 40" stroke="' + c + '" stroke-width="3" fill="none" stroke-dasharray="4 4"/><circle cx="24" cy="15" r="5" fill="' + c + '"/><rect x="34" y="30" width="8" height="10" fill="none" stroke="' + c + '" stroke-width="2"/>',
+    thunder: '<path d="M28 4 L12 28 h12 l-4 16 L36 20 h-12z" fill="' + c + '"/>', prestige: '<path d="' + starPath(24, 24, 18) + '" fill="' + c + '"/>' };
+  return '<svg viewBox="0 0 48 48">' + (P[id] || '') + '</svg>';
+}
+function effectPreview(cv, E) {
+  const g = cv.getContext('2d'); cv.width = 300; cv.height = 180;
+  g.fillStyle = '#163f24'; g.fillRect(0, 130, 300, 50); g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 2; g.strokeRect(95, 78, 110, 52); g.strokeStyle = 'rgba(255,255,255,.14)'; for (let i = 0; i < 6; i++) { g.beginPath(); g.moveTo(95 + i * 22, 78); g.lineTo(95 + i * 22, 130); g.stroke(); }
+  const cx = 150, cy = 100;
+  for (let i = 0; i < 140; i++) { g.fillStyle = E.colors[i % E.colors.length]; g.globalAlpha = .35 + Math.random() * .65; let x, y, r = 1 + Math.random() * 3;
+    if (E.rain) { x = Math.random() * 300; y = Math.random() * 150; } else if (E.shape === 'ring') { const a = Math.random() * 6.28, rr = 20 + (i % 3) * 28; x = cx + Math.cos(a) * rr; y = cy + Math.sin(a) * rr * .5; } else if (E.swirl) { const a = i * .35, rr = 8 + i * .7; x = cx + Math.cos(a) * rr; y = cy - 10 + Math.sin(a) * rr * .45; } else if (E.grav < 0) { x = cx + (Math.random() - .5) * 60; y = 140 - Math.random() * 120; r *= 1.3; } else { const a = Math.random() * 6.28, rr = Math.random() * 70; x = cx + Math.cos(a) * rr; y = cy + Math.sin(a) * rr * .7; }
+    g.shadowColor = g.fillStyle; g.shadowBlur = 8; g.beginPath(); if (E.shape === 'box') g.fillRect(x, y, r * 2, r * 1.4); else if (E.shape === 'shard') { g.moveTo(x, y - r * 3); g.lineTo(x + r, y); g.lineTo(x, y + r * 3); g.lineTo(x - r, y); g.closePath(); g.fill(); } else { g.arc(x, y, r, 0, 6.28); g.fill(); } }
+  g.globalAlpha = 1; g.shadowBlur = 0;
+}
+function stadiumPreview(cv, ST) { const g = cv.getContext('2d'); cv.width = 170; cv.height = 84; const sky = '#' + ST.sky.toString(16).padStart(6, '0'); const gr = g.createLinearGradient(0, 0, 0, 84); gr.addColorStop(0, sky); gr.addColorStop(.55, sky); gr.addColorStop(.56, ST.grass[0]); gr.addColorStop(1, ST.grass[1]); g.fillStyle = gr; g.fillRect(0, 0, 170, 84); g.strokeStyle = '#' + ST.line.toString(16).padStart(6, '0'); g.lineWidth = 2; g.strokeRect(20, 52, 130, 26); g.beginPath(); g.moveTo(85, 52); g.lineTo(85, 78); g.stroke(); g.fillStyle = '#' + ST.light.toString(16).padStart(6, '0'); g.shadowColor = g.fillStyle; g.shadowBlur = 14; [15, 155].forEach((x) => g.fillRect(x - 6, 14, 12, 4)); }
+// Gerçek para paketleri (fiyatlar örnek; ödeme sağlayıcısı PAY.buy içinde bağlanır)
+const PACKS = [
+  { id: 'p1', name: 'Avuç', coins: 1200, bonus: 0, usd: 0.99, tl: 29.99 },
+  { id: 'p2', name: 'Kese', coins: 3300, bonus: 10, usd: 2.49, tl: 79.99, tag: 'POPÜLER' },
+  { id: 'p3', name: 'Sandık', coins: 7500, bonus: 25, usd: 4.99, tl: 159.99 },
+  { id: 'p4', name: 'Kasa', coins: 16000, bonus: 35, usd: 9.99, tl: 319.99, best: true, tag: 'EN İYİ' },
+  { id: 'p5', name: 'Hazine', coins: 36000, bonus: 50, usd: 19.99, tl: 649.99 },
+];
+const PAY = {
+  price(p) { return LANG === 'tr' ? `₺${p.tl.toFixed(2)}` : `$${p.usd.toFixed(2)}`; },
+  buy(p) { // Burası ödeme sağlayıcısına bağlanır: Stripe Checkout / Google Play Billing / StoreKit. Şimdilik test akışı.
+    const w = modal(t('Ödeme'), `<div class="row" style="justify-content:space-between"><b style="font-family:var(--font-display);font-size:18px">${t(p.name)}</b><span class="pill gold"><span class="coin"></span>${p.coins.toLocaleString()}</span><b style="font-size:20px">${PAY.price(p)}</b></div><div class="tiny" style="text-transform:none;letter-spacing:0">${t('Bu bir test satın almadır. Yayında Stripe / Google Play / App Store ödemesi buraya bağlanır.')}</div><button class="btn primary shine" id="payGo">${t('Test satın alma (ödeme bağlı değil)')}</button>`, null, { small: true });
+    w.dataset.kind = 'pay'; w.querySelector('#payGo').onclick = (e) => { S.coins += p.coins; save(); AUDIO.buy(); FX.pop(e.currentTarget, ['#ffcf4a', '#ffffff', '#ff9a1f']); toast(t('+{n} altın hesabına eklendi', { n: p.coins.toLocaleString() })); refreshLobby(); openShop('gold'); };
+  },
+};
+function openShop(tab) {
+  tab = tab || 'boots';
+  const tabs = [['boots', 'Kramponlar'], ['effects', 'Gol Efektleri'], ['stadiums', 'Stadyumlar'], ['gold', 'Altın Paketleri']];
+  const w = modal(t('Mağaza'), `<div class="row"><div class="tabs">${tabs.map(([k, n]) => `<button class="tab ${tab === k ? 'active' : ''}" data-t="${k}">${t(n)}</button>`).join('')}</div><span class="spacer"></span><span class="pill gold"><span class="coin"></span><span class="num">${S.coins.toLocaleString()}</span></span><button class="btn ghost" style="padding:6px 10px;font-size:11px" id="shopAd">${t('Reklam izle +40')}</button></div><div class="tiny" style="text-transform:none;letter-spacing:0">${t(tab === 'boots' ? 'Krampon; güç (şut hızı), hız ve kontrol verir. Şut izi kramponun rengini alır.' : tab === 'effects' ? 'Gol attığında sahada oynayan kutlama efekti.' : tab === 'stadiums' ? 'Lobide ve bot maçlarında kullanılan stadyum. Online maçlarda rastgele seçilir.' : 'Gerçek parayla altın. Ödeme sağlayıcısı bağlanana kadar satın almalar test modundadır.')}</div><div class="grid" id="shopGrid"></div>`, null, { page: true });
+  w.dataset.kind = 'shop'; w.querySelectorAll('.tab').forEach((b) => { b.onclick = () => openShop(b.dataset.t); }); w.querySelector('#shopAd').onclick = openAd;
+  const grid = w.querySelector('#shopGrid');
+  if (tab === 'gold') {
+    PACKS.forEach((p, pi) => { const el = document.createElement('div'); el.className = 'item pack' + (p.best ? ' best' : ''); el.style.setProperty('--c', '#ffcf4a');
+      const n = Math.min(9, 3 + pi * 2); let pile = ''; for (let i = 0; i < n; i++) pile += `<i style="left:${10 + (i % 3) * 22 + (i > 5 ? 11 : 0)}px;top:${40 - Math.floor(i / 3) * 16}px"></i>`;
+      el.innerHTML = `${p.tag ? `<span class="bonus">${t(p.tag)}</span>` : ''}<div class="preview"><div class="pile">${pile}</div></div><div class="amt"><span class="coin"></span> ${p.coins.toLocaleString()}</div><b>${t(p.name)}</b>${p.bonus ? `<span class="tiny" style="color:var(--green)">+${p.bonus}% bonus</span>` : '<span class="tiny">&nbsp;</span>'}<button class="buy shine">${t('Satın Al')} · ${PAY.price(p)}</button>`;
+      el.querySelector('.buy').onclick = () => { AUDIO.click(); PAY.buy(p); }; grid.appendChild(el); });
+    return;
+  }
+  const items = tab === 'boots' ? Object.entries(SIM.BOOTS) : tab === 'effects' ? Object.entries(EFFECTS) : Object.entries(STADIUMS);
+  const owned = tab === 'boots' ? S.ownedBoots : tab === 'effects' ? S.ownedEffects : S.ownedStadiums;
+  const curKey = tab === 'boots' ? 'boots' : tab === 'effects' ? 'effect' : 'stadium';
+  items.forEach(([id, it]) => {
+    const has = owned.includes(id), on = S[curKey] === id;
+    const el = document.createElement('div'); el.className = 'item r-' + it.rarity; el.style.setProperty('--c', it.trail || (it.colors ? it.colors[0] : '#' + (it.wall || 0xffcf4a).toString(16).padStart(6, '0')));
+    const bar = (l, v) => `<div class="statbar"><span>${t(l)}</span><i><b style="width:${Math.min(100, (v - .8) / .6 * 100)}%"></b></i><span class="num">${v.toFixed(2)}</span></div>`;
+    el.innerHTML = `<div class="preview"><canvas></canvas></div><div class="rarity rar-${it.rarity}">${t(it.rarity)}</div><b>${t(it.name)}</b><span class="tiny" style="text-transform:none;letter-spacing:0">${t(it.desc)}</span>` + (tab === 'boots' ? `<div class="statbars">${bar('Güç', it.power)}${bar('Hız', it.speed)}${bar('Kontrol', it.control)}</div>` : '') + (has ? `<span class="owned">${t('SENDE')}</span>` : '') + `<button class="buy ${on ? 'on' : has ? 'equip shine' : S.coins >= it.price ? 'shine' : 'cant'}">${on ? t('Kullanılıyor') : has ? t('Kuşan') : `<span class="coin"></span> ${it.price.toLocaleString()}`}</button>`;
+    const cv = el.querySelector('canvas'); if (tab === 'boots') bootPreview(cv, it); else if (tab === 'effects') effectPreview(cv, it); else stadiumPreview(cv, it);
+    el.querySelector('.buy').onclick = (e) => {
+      if (on) return;
+      if (has) { S[curKey] = id; save(); AUDIO.click(); FX.pop(e.currentTarget, ['#4ee8ff', '#ffffff']); NET.prof(); refreshLobby(); if (tab !== 'effects') enterLobby(); openShop(tab); return; }
+      if (S.coins < it.price) { AUDIO.deny(); toast(t('{n} altın daha lazım. Maç oyna ya da reklam izle.', { n: it.price - S.coins })); return; }
+      S.coins -= it.price; owned.push(id); S[curKey] = id; save(); AUDIO.buy(); FX.pop(e.currentTarget, ['#ffcf4a', '#ffffff', '#ff9a1f']); toast(t('{name} satın alındı!', { name: t(it.name) })); NET.prof(); refreshLobby(); if (tab !== 'effects') enterLobby(); openShop(tab);
+    };
+    grid.appendChild(el);
+  });
+}
+
+/* ================= BATTLE PASS ================= */
+function rewardLabelT(r) { if (r.c) return t('{n} Altın', { n: r.c }); if (r.x) return t('{n} XP', { n: r.x }); if (r.boots) return t('{n} Krampon', { n: t(SIM.BOOTS[r.boots].name) }); if (r.effect) return t('{n} Efekti', { n: t(EFFECTS[r.effect].name) }); if (r.stadium) return t(STADIUMS[r.stadium].name); return '?'; }
+function openPass() {
+  const tier = Math.min(30, Math.floor(S.bpXp / BP_TIER_XP)), into = S.bpXp - tier * BP_TIER_XP;
+  const w = modal(t('Battle Pass · Sezon 1'), `<div class="bp-head shine"><div class="col" style="gap:4px"><div class="bp-title">${t('ALTIN ÇAĞ')}</div><div class="tiny">${t('Kademe {t} / 30 · {s}', { t: tier, s: S.bpPremium ? t('Premium aktif') : t('Ücretsiz hat') })}</div></div><div class="col" style="flex:1;min-width:160px;gap:4px"><div class="bp-xp"><i style="width:${tier >= 30 ? 100 : into / BP_TIER_XP * 100}%"></i></div><span class="tiny num">${tier >= 30 ? t('Tamamlandı') : t('{a} / {b} Pass XP', { a: into, b: BP_TIER_XP })}</span></div>${S.bpPremium ? '' : `<button class="btn magenta shine" id="bpBuy"><span class="coin"></span> ${BP_PRICE.toLocaleString()}${t(' · Premium Al')}</button>`}</div><div class="tiny">${t("Her maç XP'nin yarısı kadar Pass XP verir. Premium hatta öne çıkanlar:")}</div><div class="bp-feat" id="bpFeat"></div><div class="bp-track" id="bpTrack"></div>`, null, { page: true });
+  w.dataset.kind = 'pass';
+  const buyBtn = w.querySelector('#bpBuy'); if (buyBtn) buyBtn.onclick = (e) => { if (S.coins < BP_PRICE) { AUDIO.deny(); toast(t('{n} altın daha lazım.', { n: BP_PRICE - S.coins })); return; } S.coins -= BP_PRICE; S.bpPremium = true; save(); AUDIO.buy(); FX.pop(e.currentTarget, ['#ff3fb4', '#ffcf4a', '#ffffff']); toast(t('Premium Battle Pass açıldı!')); refreshLobby(); openPass(); };
+  const feat = w.querySelector('#bpFeat'); [[1, { boots: 'ember' }], [7, { effect: 'fireworks' }], [12, { stadium: 'coast' }], [24, { boots: 'royal' }], [30, { effect: 'galaxy' }]].forEach(([n, r]) => { const d = document.createElement('div'); d.className = 'f shine'; d.innerHTML = `<canvas></canvas><b></b><span class="tiny">${t('Kademe {n}', { n })}</span>`; d.querySelector('b').textContent = rewardLabelT(r); const cv = d.querySelector('canvas'); if (r.boots) bootPreview(cv, SIM.BOOTS[r.boots]); else if (r.effect) effectPreview(cv, EFFECTS[r.effect]); else stadiumPreview(cv, STADIUMS[r.stadium]); feat.appendChild(d); });
+  const track = w.querySelector('#bpTrack');
+  BP.forEach((tr, i) => {
+    const n = i + 1, reached = n <= tier;
+    const mk = (r, prem) => { const key = (prem ? 'p' : 'f') + n, claimed = S.bpClaimed.includes(key), can = reached && !claimed && (!prem || S.bpPremium); const d = document.createElement('div'); d.className = 'reward' + (prem ? ' prem' : '') + (claimed ? ' locked' : '') + (can ? ' claimable shine' : '') + (!reached || (prem && !S.bpPremium) ? ' locked' : ''); d.innerHTML = `<b></b><span class="tiny">${claimed ? t('Alındı') : can ? t('Al!') : prem && !S.bpPremium ? t('Premium') : reached ? '' : t('Kilitli')}</span>`; d.querySelector('b').textContent = rewardLabelT(r); if (can) d.onclick = () => { giveReward(r); S.bpClaimed.push(key); save(); AUDIO.coin(); FX.pop(d, ['#ffcf4a', '#ffffff']); toast(t('{r} alındı', { r: rewardLabelT(r) })); refreshLobby(); openPass(); }; return d; };
+    const col = document.createElement('div'); col.className = 'bp-tier'; const nn = document.createElement('div'); nn.className = 'n' + (reached ? ' done' : ''); nn.textContent = t('KADEME {n}', { n }); col.appendChild(nn); col.appendChild(mk(tr.prem, true)); col.appendChild(mk(tr.free, false)); track.appendChild(col);
+  });
+  setTimeout(() => { track.scrollLeft = Math.max(0, (tier - 1) * 130); }, 50);
+}
+
+/* ================= YETENEK AĞACI ================= */
+function openSkills() {
+  const cap = S.prestige > 0 ? 30 : S.maxLevel, cur = SIM.ABILITIES.find((a) => a.id === S.ability);
+  const w = modal(t('Yetenek Ağacı'), `<div class="row" style="justify-content:center"><span class="pill">${t('Seviye {l}', { l: S.level })}${S.prestige ? ' · ' + t('Prestij') + ' ' + S.prestige : ''}</span><span class="pill">${t('En yüksek seviye: {n}', { n: cap })}</span><span class="pill gold">${t('Aktif: {n}', { n: cur ? t(cur.name) : t('yok') })}</span></div><div class="tiny" style="text-align:center;text-transform:none;letter-spacing:0">${t('Her 5 seviyede bir yetenek açılır. Maçta E tuşu (dokunmatikte YET.) ile kullanılır; aynı anda tek yetenek aktiftir.')}</div><div class="tree" id="tree"></div>`, null, { page: true });
+  w.dataset.kind = 'skills';
+  const tree = w.querySelector('#tree');
+  SIM.ABILITIES.forEach((a) => {
+    const open = a.lvl <= cap, active = S.ability === a.id;
+    const d = document.createElement('div'); d.className = 'node ' + (active ? 'active' : open ? 'open' : 'locked');
+    d.innerHTML = `<div class="ico">${abilitySvg(a.id, active ? '#ffcf4a' : open ? '#4ee8ff' : '#6b7290')}</div><div class="col" style="gap:2px"><span class="lvl">${t('Seviye {l} · bekleme {c} sn', { l: a.lvl, c: a.cd })}</span><b></b><span class="muted" style="font-size:14px"></span></div><div>${active ? `<span class="pill gold">${t('Aktif')}</span>` : open ? `<button class="btn cyan" style="padding:6px 12px;font-size:12px">${t('Seç')}</button>` : `<span class="pill">🔒 Lv ${a.lvl}</span>`}</div>`;
+    d.querySelector('b').textContent = t(a.name); d.querySelector('.muted').textContent = t(a.desc);
+    const b = d.querySelector('button'); if (b) b.onclick = () => { S.ability = a.id; if (!S.seenAb.includes(a.id)) S.seenAb.push(a.id); save(); NET.prof(); AUDIO.unlock(); FX.pop(b, ['#4ee8ff', '#ffffff']); refreshLobby(); openSkills(); };
+    if (open && !S.seenAb.includes(a.id)) { S.seenAb.push(a.id); }
+    tree.appendChild(d);
+  });
+  const pr = document.createElement('div'); pr.className = 'node ' + (S.prestige ? 'active' : 'locked'); pr.innerHTML = `<div class="ico">${abilitySvg('prestige', S.prestige ? '#ff3fb4' : '#6b7290')}</div><div class="col" style="gap:2px"><span class="lvl">${t('Seviye 30')}</span><b>${t('Prestij')}</b><span class="muted" style="font-size:14px">${t("30. seviyeyi geçince seviye 1'e döner, tüm yetenekler açık kalır ve adının yanına yıldız gelir.")}</span></div><div>${S.prestige ? `<span class="pill gold">★ ${S.prestige}</span>` : '<span class="pill">🔒</span>'}</div>`; tree.appendChild(pr);
+  save(); refreshLobby();
+}
+
+/* ================= ARKADAŞLAR ================= */
+function openFriends() {
+  const w = modal(t('Arkadaşlar'), `<div class="row"><input id="friendInput" class="inp" placeholder="${t('Takma ad ekle')}" maxlength="16" style="flex:1;min-width:140px;font-size:16px;padding:10px"><button class="btn cyan" id="friendAdd">${t('Ekle')}</button></div><div class="tiny">${NET.ok ? t('Çevrimiçi arkadaşlarını özel maça davet edebilirsin.') : t('Davet için sunucuya bağlı olman gerekir.')}</div><div class="col" id="friendList"></div>`);
+  w.dataset.kind = 'friends';
+  const list = w.querySelector('#friendList');
+  if (!S.friends.length) list.innerHTML = `<div class="muted">${t('Henüz arkadaş yok. Takma adıyla ekle.')}</div>`;
+  S.friends.forEach((f) => {
+    const on = NET.friendsOnline.map((x) => x.toLowerCase()).includes(f.toLowerCase());
+    const d = document.createElement('div'); d.className = 'friend' + (on ? ' on' : ''); d.innerHTML = `<div class="av">${f[0].toUpperCase()}</div><div class="col" style="gap:0;flex:1"><b></b><span class="tiny">${on ? t('Çevrimiçi') : t('Çevrimdışı')}</span></div><button class="btn cyan ${on ? 'shine' : ''}" style="padding:6px 10px;font-size:11px" ${on ? '' : 'disabled'}>${t('Davet 1v1')}</button><button class="btn cyan" style="padding:6px 10px;font-size:11px" ${on ? '' : 'disabled'}>${t('Davet 2v2')}</button><button class="icon-btn">${t('Sil')}</button>`;
+    d.querySelector('b').textContent = f; const btns = d.querySelectorAll('button');
+    btns[0].onclick = () => { NET.send({ t: 'invite', to: f, mode: '1v1' }); AUDIO.click(); }; btns[1].onclick = () => { NET.send({ t: 'invite', to: f, mode: '2v2' }); AUDIO.click(); };
+    btns[2].onclick = () => { S.friends = S.friends.filter((x) => x !== f); save(); openFriends(); };
+    list.appendChild(d);
+  });
+  w.querySelector('#friendAdd').onclick = () => { const v = w.querySelector('#friendInput').value.trim(); if (!v || v.toLowerCase() === (S.nick || '').toLowerCase() || S.friends.map((x) => x.toLowerCase()).includes(v.toLowerCase())) return; S.friends.push(v); save(); AUDIO.coin(); NET.send({ t: 'presence', friends: S.friends }); openFriends(); };
+}
+
+/* ================= GÜNLÜK BONUS ================= */
+function openDaily() {
+  const today = todayKey(), y = new Date(); y.setDate(y.getDate() - 1); const yKey = y.getFullYear() + '-' + (y.getMonth() + 1) + '-' + y.getDate();
+  const claimedToday = S.daily.last === today;
+  let streak = S.daily.streak; if (!claimedToday) streak = S.daily.last === yKey ? S.daily.streak : 0;
+  const idx = claimedToday ? (streak - 1) % 7 : streak % 7;
+  const w = modal(t('Günlük Giriş Bonusu'), `<div class="tiny">${t('Her gün gir, seri bozulmasın. 7. günde özel ödül.')}</div><div class="days" id="days"></div><button class="btn primary shine" id="dailyClaim" ${claimedToday ? 'disabled' : ''}>${claimedToday ? t('Bugün alındı · yarın gel') : t('Ödülü Al')}</button>`);
+  w.dataset.kind = 'daily';
+  const days = w.querySelector('#days');
+  DAILY.forEach((d, i) => { const el = document.createElement('div'); el.className = 'day' + (i < idx || (claimedToday && i === idx) ? ' claimed' : '') + (i === idx ? ' today shine' : ''); el.innerHTML = `<b>${t('GÜN {n}', { n: i + 1 })}</b><span class="num">${d.c} <span class="coin"></span></span><span class="tiny">${d.x} XP</span>${d.effect ? `<span class="tiny" style="color:var(--magenta)">${t(EFFECTS[d.effect].name)}</span>` : ''}`; days.appendChild(el); });
+  w.querySelector('#dailyClaim').onclick = (e) => { const d = DAILY[idx]; giveReward({ c: d.c, x: d.x, effect: d.effect }); S.daily = { last: today, streak: streak + 1 }; save(); AUDIO.buy(); FX.pop(e.currentTarget, ['#ffcf4a', '#ffffff']); toast(t('+{c} altın, +{x} XP', { c: d.c, x: d.x })); refreshLobby(); openDaily(); };
+}
+
+/* ================= REKLAM (simülasyon) ================= */
+let adCooldown = 0;
+function openAd() {
+  if (Date.now() < adCooldown) { toast(t('Reklam birazdan tekrar hazır.')); return; }
+  const w = modal(t('Reklam'), `<div class="adbox">${t('REKLAM ALANI')}<br><span class="tiny">${t('Buraya gerçek reklam ağı (AdSense / AdMob) bağlanır')}</span></div><div class="prog"><i id="adProg"></i></div><div class="tiny" id="adTxt">${t('Ödül için 5 saniye izle…')}</div>`, null, { small: true });
+  w.dataset.kind = 'ad'; let s = 0; const iv = setInterval(() => { s++; const p = w.querySelector('#adProg'); if (!p) { clearInterval(iv); return; } p.style.width = s * 20 + '%'; if (s >= 5) { clearInterval(iv); S.coins += 40; save(); AUDIO.coin(); toast(t('+40 altın')); adCooldown = Date.now() + 60000; refreshLobby(); closeModal(); } }, 1000);
+}
+
+/* ================= AYARLAR ================= */
+function openSettings() {
+  const mv = S.music == null ? .7 : S.music;
+  const w = modal(t('Ayarlar'), `
+    <div class="setrow"><label for="setVol">${t('Ses efektleri')}</label><input id="setVol" type="range" min="0" max="1" step=".05" value="${S.volume}"><span class="num" id="setVolT">${Math.round(S.volume * 100)}%</span></div>
+    <div class="setrow"><label for="setMusic">${t('Müzik')}</label><input id="setMusic" type="range" min="0" max="1" step=".05" value="${mv}"><span class="num" id="setMusicT">${Math.round(mv * 100)}%</span></div>
+    <div class="setrow"><label for="setLang">${t('Dil')}</label><select id="setLang"><option value="en" ${LANG === 'en' ? 'selected' : ''}>English</option><option value="tr" ${LANG === 'tr' ? 'selected' : ''}>Türkçe</option></select></div>
+    <div class="setrow"><label>${t('Takma adı değiştir')}</label><input id="setNick" class="inp" placeholder="${t('Yeni takma ad')}" maxlength="16" value="${S.nick || ''}" style="flex:1;min-width:120px;font-size:15px;padding:8px"><button class="btn cyan" id="setNickGo" style="padding:7px 12px;font-size:12px">${t('Değiştir')}</button></div>
+    <div class="setrow"><label>${t('HUD düzeni')}</label><button class="btn" id="setHud" style="padding:7px 12px;font-size:12px">${t('Tuşları Düzenle')}</button><label for="setHs" style="min-width:0">${t('Tuş boyutu')}</label><input id="setHs" type="range" min=".8" max="1.4" step=".05" value="${S.hudScale || 1}" style="max-width:140px"></div>
+    <div class="setrow"><label>${t('Koş tuşu')}</label><div class="tabs"><button class="tab ${S.sprintToggle ? 'active' : ''}" data-st="1">${t('Dokun: aç/kapat')}</button><button class="tab ${S.sprintToggle ? '' : 'active'}" data-st="0">${t('Basılı tut')}</button></div></div>
+    <div class="setrow"><label><input id="setBloom" type="checkbox" ${S.bloom ? 'checked' : ''}> ${t('Parlama / bloom efektleri (zayıf cihazlarda kapat)')}</label></div>
+    <div class="setrow"><label><input id="setFx" type="checkbox" checked> ${t('Arayüz pırıltıları')}</label></div>
+    <div class="setrow"><label for="setServer">${t('Sunucu adresi (boş: bu sayfanın sunucusu)')}</label><input id="setServer" class="inp" placeholder="ws://localhost:8080" value="${S.server || ''}" style="flex:1;min-width:140px;font-size:14px;padding:8px"><button class="btn cyan" id="setConnect" style="padding:7px 12px;font-size:12px">${t('Bağlan')}</button></div>
+    <div class="setrow"><label><input id="setNotif" type="checkbox" ${S.notif ? 'checked' : ''}> ${t('Günlük hatırlatma bildirimi')}</label></div>
+    <div class="tiny" style="text-transform:none;letter-spacing:0">${t('Kontroller: WASD/ok tuşları hareket · Boşluk şut · Shift sprint · E yetenek · 1-8 hızlı sohbet')}<br>${t('Oyun ekranın yenileme hızında çalışır (120 Hz monitörde 120 FPS).')}</div>`);
+  w.dataset.kind = 'settings';
+  w.querySelector('#setVol').oninput = (e) => { AUDIO.vol(+e.target.value); save(); w.querySelector('#setVolT').textContent = Math.round(S.volume * 100) + '%'; };
+  w.querySelector('#setMusic').oninput = (e) => { AUDIO.musicVol(+e.target.value); save(); w.querySelector('#setMusicT').textContent = Math.round(S.music * 100) + '%'; };
+  w.querySelector('#setLang').onchange = (e) => { S.lang = e.target.value; save(); toast(t('Dil değişti; sayfa yenileniyor…')); setTimeout(() => location.reload(), 500); };
+  w.querySelector('#setNickGo').onclick = () => { const v = w.querySelector('#setNick').value.trim(); if (!/^[A-Za-z0-9_çğıöşüÇĞİÖŞÜ]{3,16}$/.test(v)) { toast(t('Takma ad 3-16 karakter: harf, rakam ve _')); return; } if (v === S.nick) return; if (NET.ok) NET.send({ t: 'rename', nick: v }); else { S.nick = v; S.token = null; save(); refreshLobby(); toast(t('Takma ad değiştirildi.')); $('titleNick').textContent = t('Hoş geldin, ') + S.nick; if (!$('s-lobby').hidden) enterLobby(); } };
+  w.querySelector('#setHud').onclick = () => { AUDIO.init(); openHudEditor(); };
+  w.querySelector('#setHs').oninput = (e) => { S.hudScale = +e.target.value; save(); applyHud(); };
+  w.querySelectorAll('[data-st]').forEach((b) => { b.onclick = () => { S.sprintToggle = b.dataset.st === '1'; save(); w.querySelectorAll('[data-st]').forEach((x) => x.classList.toggle('active', x === b)); }; });
+  w.querySelector('#setBloom').onchange = (e) => { S.bloom = e.target.checked; bloom.enabled = S.bloom; save(); };
+  w.querySelector('#setFx').onchange = (e) => FX.set(e.target.checked);
+  w.querySelector('#setConnect').onclick = () => { S.server = w.querySelector('#setServer').value.trim(); save(); NET.fails = 0; if (NET.ws) { try { NET.ws.close(); } catch (e) {} NET.ws = null; } NET.connect(); toast(t('Bağlanılıyor…')); };
+  w.querySelector('#setNotif').onchange = async (e) => { if (e.target.checked && 'Notification' in window) { const p = await Notification.requestPermission(); S.notif = p === 'granted'; if (S.notif) { toast(t('Bildirimler açık. Günlük bonus hatırlatması gelecek.')); scheduleReminder(); } else { e.target.checked = false; toast(t('Bildirim izni verilmedi.')); } } else S.notif = false; save(); };
+}
+function scheduleReminder() { if (!S.notif || !('Notification' in window) || Notification.permission !== 'granted') return; setTimeout(() => { try { new Notification('NeonKick', { body: LANG === 'tr' ? 'Günlük bonusun seni bekliyor! Bugün bir maç yap.' : 'Your daily bonus is waiting! Play a match today.' }); } catch (e) {} }, 1000 * 60 * 60 * 20); }
+
+/* ================= ÖZEL MAÇ ================= */
+function openCustom(room) {
+  if (NET.ok) {
+    if (!room) { NET.send({ t: 'custom_create', mode: '1v1' }); return; }
+    const host = room.host === S.nick, cap = room.mode === '1v1' ? 2 : 4;
+    const w = modal(t('Özel Maç'), `<div class="row"><div class="col" style="gap:2px"><span class="tiny">${t('Oda kodu')}</span><b style="font-family:var(--font-display);font-size:30px;letter-spacing:.2em" class="glow-text">${room.code}</b></div><span class="spacer"></span><div class="tabs"><button class="tab ${room.mode === '1v1' ? 'active' : ''}" data-m="1v1" ${host ? '' : 'disabled'}>1v1</button><button class="tab ${room.mode === '2v2' ? 'active' : ''}" data-m="2v2" ${host ? '' : 'disabled'}>2v2</button></div></div><div class="tiny">${t('Kodu arkadaşına gönder. Boş yerlere bot girer.')}</div><div class="col" id="members"></div><div class="row"><button class="btn primary shine" id="cStart" ${host ? '' : 'disabled'}>${host ? t('Maçı Başlat') : t('Kurucu bekleniyor…')}</button><button class="btn" id="cLeave">${t('Odadan Çık')}</button><span class="spacer"></span><input id="joinCode" class="inp" placeholder="${t('Kod ile katıl')}" maxlength="4" style="width:120px;padding:8px;font-size:14px;text-transform:uppercase"><button class="btn cyan" id="cJoin">${t('Katıl')}</button></div>`);
+    w.dataset.kind = 'custom';
+    const mem = w.querySelector('#members'); for (let i = 0; i < cap; i++) { const n = room.members[i]; const d = document.createElement('div'); d.className = 'friend' + (n ? ' on' : ''); d.innerHTML = `<div class="av">${n ? n[0].toUpperCase() : '🤖'}</div><b></b><span class="tiny">${i < cap / 2 ? t('Mavi takım') : t('Pembe takım')}</span>`; d.querySelector('b').textContent = n || t('Bot'); mem.appendChild(d); }
+    w.querySelectorAll('.tab').forEach((b) => { b.onclick = () => NET.send({ t: 'custom_mode', mode: b.dataset.m }); });
+    w.querySelector('#cStart').onclick = () => NET.send({ t: 'custom_start' });
+    w.querySelector('#cLeave').onclick = () => { NET.send({ t: 'custom_leave' }); closeModal(); };
+    w.querySelector('#cJoin').onclick = () => { const c = w.querySelector('#joinCode').value.trim(); if (c) NET.send({ t: 'custom_join', code: c }); };
+  } else {
+    const w = modal(t('Özel Maç (çevrimdışı)'), `<div class="tiny">${t('Sunucu yokken özel maç botlara karşı kurulur.')}</div><div class="row"><span class="tiny">${t('Mod')}</span><div class="tabs"><button class="tab active" data-m="1v1">1v1</button><button class="tab" data-m="2v2">2v2</button></div></div><div class="row"><span class="tiny">${t('Bot zorluğu')}</span><div class="tabs"><button class="tab" data-d=".45">${t('Kolay')}</button><button class="tab active" data-d=".7">${t('Normal')}</button><button class="tab" data-d=".92">${t('Zor')}</button></div></div><div class="row"><span class="tiny">${t('Süre')}</span><div class="tabs"><button class="tab" data-t="60">${t('1 dk')}</button><button class="tab active" data-t="120">${t('2 dk')}</button><button class="tab" data-t="180">${t('3 dk')}</button></div></div><button class="btn primary shine" id="cGo">${t('Başlat')}</button>`, null, { small: true });
+    w.dataset.kind = 'custom'; let mode = '1v1', diff = .7, time = 120;
+    w.querySelectorAll('.tab').forEach((b) => { b.onclick = () => { b.parentElement.querySelectorAll('.tab').forEach((x) => x.classList.remove('active')); b.classList.add('active'); if (b.dataset.m) mode = b.dataset.m; if (b.dataset.d) diff = +b.dataset.d; if (b.dataset.t) time = +b.dataset.t; AUDIO.click(); }; });
+    w.querySelector('#cGo').onclick = () => { startBotMatch(mode, diff, time); };
+  }
+}
+function startBotMatch(mode, diff, time) {
+  const n = mode === '1v1' ? 2 : 4; const names = ['Bot Kaya', 'Bot Deniz', 'Bot Rüzgar'].map((x) => t(x)); const bootsPool = ['ember', 'frost', 'venom', 'royal'];
+  const players = []; for (let i = 0; i < n; i++) { const team = mode === '1v1' ? i : (i < 2 ? 0 : 1); if (i === 0) players.push({ id: 0, team, name: S.nick, boots: S.boots, ability: S.ability, bot: false }); else players.push({ id: i, team, name: names[i - 1], boots: bootsPool[i % 4], ability: ['power', 'dash', 'curve'][i % 3], bot: true }); }
+  startMatch({ online: false, mode, players, slot: 0, kind: 'bot', botDiff: diff, stadium: S.stadium });
+  if (time && time !== SIM.MATCH_TIME) M.st.time = time;
+}
+
+/* ================= OLAYLAR ================= */
+$('titlePlay').onclick = () => { AUDIO.init(); AUDIO.resume(); if (S.nick) { enterLobby(); if (!NET.ws) NET.connect(); } else { $('titleMenu').hidden = true; $('nickForm').hidden = false; setTimeout(() => $('nickInput').focus(), 50); } };
+$('titleSettings').onclick = () => { AUDIO.init(); openSettings(); };
+$('nickBtn').onclick = () => {
+  AUDIO.init(); AUDIO.resume(); const v = $('nickInput').value.trim();
+  if (!/^[A-Za-z0-9_çğıöşüÇĞİÖŞÜ]{3,16}$/.test(v)) { $('nickErr').textContent = t('Takma ad 3-16 karakter: harf, rakam ve _'); return; }
+  S.nick = v; S.token = null; save(); $('nickErr').textContent = ''; enterLobby(); NET.hello(); if (!NET.ws) NET.connect();
+};
+$('nickInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('nickBtn').click(); });
+$('btnShop').onclick = () => openShop(); $('btnPass').onclick = openPass; $('btnSkills').onclick = openSkills; $('lbRank').onclick = openRanks; $('btnFriends').onclick = openFriends; $('btnDaily').onclick = openDaily; $('btnSettings').onclick = openSettings; $('btnAdReward').onclick = openAd; $('lbCoins').onclick = () => openShop('gold');
+$('stadiumSel').onchange = (e) => { S.stadium = e.target.value; save(); enterLobby(); };
+function playMode(kind, mode) {
+  AUDIO.click();
+  if (kind === 'bot') startBotMatch(mode, .7, 120);
+  else if (kind === 'custom') openCustom();
+  else if (kind === 'ranked') { if (!NET.ok) { toast(t('Dereceli maç için sunucuya bağlan (Ayarlar).')); return; } NET.send({ t: 'queue', mode }); $('queueTxt').textContent = t('Sıraya girildi…'); }
+}
+document.querySelectorAll('.mode').forEach((b) => { b.onclick = () => playMode(b.dataset.kind, b.dataset.mode); });
+const MODES = [...document.querySelectorAll('.mode')].map((b) => ({ kind: b.dataset.kind, mode: b.dataset.mode, title: b.querySelector('b').textContent, desc: b.querySelector('span').textContent }));
+let modeIdx = 2;
+function showMode() { const m = MODES[modeIdx]; $('modeTitle').textContent = m.title; $('modeDesc').textContent = m.desc; }
+$('modePrev').onclick = () => { modeIdx = (modeIdx + MODES.length - 1) % MODES.length; showMode(); AUDIO.click(); };
+$('modeNext').onclick = () => { modeIdx = (modeIdx + 1) % MODES.length; showMode(); AUDIO.click(); };
+$('modePlay').onclick = () => { const m = MODES[modeIdx]; playMode(m.kind, m.mode); };
+$('btnLeave').onclick = confirmLeave;
+$('tbChat').onclick = () => { if (document.body.classList.contains('hud-edit')) return; $('qcBar').classList.toggle('open'); AUDIO.click(); };
+$('qcBar').addEventListener('click', () => $('qcBar').classList.remove('open'));
+$('btnLobby').onclick = () => { closeModal(); enterLobby(); };
+$('btnAgain').onclick = () => { if (M.kind === 'bot') startBotMatch(M.mode, M.botDiff, 120); else if (M.ranked) { enterLobby(); NET.send({ t: 'queue', mode: M.mode }); $('queueTxt').textContent = t('Sıraya girildi…'); } else enterLobby(); };
+document.addEventListener('pointerdown', () => { AUDIO.init(); AUDIO.resume(); }, { once: true });
+document.addEventListener('click', (e) => { if (e.target.closest('.btn,.icon-btn,.tab,.mode')) AUDIO.click(); });
+
+/* ================= ANA DÖNGÜ ================= */
+let last = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  const dtMs = now - last; const dt = Math.min(.1, dtMs / 1000); last = now; if (M.active) adaptQuality(dtMs, now);
+  FX.draw(now, !M.active);
+  if (world.userData.stars) world.userData.stars.uniforms.t.value = now / 1000;
+  if (M.active) renderMatch(dt, now); else renderLobby(dt);
+  updateParticles(dt);
+  if (S.bloom) composer.render(); else renderer.render(scene, camera);
+}
+bloom.enabled = S.bloom;
+// Başlangıç
+showMode();
+show('s-nick'); buildStadium('night', '1v1'); { const c = makeCharacter(0, 'basic', ''); c.position.y = .25; actors.add(c); LOBBY.char = c; }
+$('titleNick').textContent = S.nick ? t('Hoş geldin, ') + S.nick : ''; if (S.nick) NET.connect();
+if (!location.protocol.startsWith('http')) $('nickNote').textContent = t('Çevrimdışı mod: takma ad bu cihazda saklanır. Sunucuya bağlanınca kayıt doğrulanır.');
+applyHud();
+requestAnimationFrame(loop);
+// Test/hata ayıklama için
+window.GK = { S, M, KEYS, NET, closeModal, openModal: modal, startBotMatch, openShop, openPass, openSkills, openRanks, openSettings, openHudEditor, confirmLeave, enterLobby, sendQuick, tickOffline, addXp, save, MUSIC, AUDIO, camera, renderer, t };
+
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: neonkick
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: ""
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
