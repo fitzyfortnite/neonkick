@@ -2,6 +2,13 @@
 
 Bu notu yeni bir sohbete yapıştırırsan kaldığımız yerden devam edebilirim.
 
+## 26 Ekim 00:45 — YAYINDA
+- **Canlı sunucu:** https://neonkick.onrender.com (Render free, Blueprint "neonkick", otomatik dağıtım: `main`e push → yeniden dağıtılır). Ücretsiz katmanda disk yok: data.json her dağıtımda sıfırlanır.
+- **GitHub:** https://github.com/fitzyfortnite/neonkick (public; Actions macOS makinesi ücretsiz olsun diye). Secret'lar: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8. Değişken: SERVER_URL=https://neonkick.onrender.com.
+- **Apple:** Bundle ID com.lyfestudios.neonkick (Team S3SMBYR9FZ); App Store Connect uygulaması "NeonKick: 3D Arena Football" (id 6826929820, SKU neonkick).
+- **TestFlight:** İş akışı "iOS -> TestFlight" çalıştırma #2 başarılı (3 dk) → Build 1.0.0 (102) yüklendi. İç test grubu "NeonKick Test", tester: hesap sahibi. Yeni sürüm: Actions → Run workflow.
+- Güvenlik notu: API anahtarı sohbete ekran görüntüsü olarak paylaşıldı; App Store Connect'te iptal edip yenisini oluşturup 3 secret'ı güncellemek önerilir.
+
 ## 19:30 — Sunucu kullanıcının PC'sine kuruldu (bilgisayar devralma ile)
 - Konum: `C:\Users\pc\Desktop\Yeni klasör` → `start.bat`, `server.js`, `tinyws.js`, `sim.js`, `index.html` (tek klasör düzeni; server.js `public/` yoksa kendi klasöründen servis eder). Klasörde kullanıcının 78 video dosyası da var; oyun dosyaları ayrı bir klasöre taşınabilir (hepsi birlikte taşınmalı).
 - `start.bat` çift tıklanınca Windows Terminal'de açılıyor: "NeonKick sunucusu hazır → http://localhost:8080 · Telefondan (aynı Wi-Fi): http://192.168.1.102:8080".
